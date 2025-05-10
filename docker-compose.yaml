@@ -1,0 +1,138 @@
+name: mlflow-poc
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: "mlflow"
+      POSTGRES_PASSWORD: "mlflow_pass"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mlflow-network
+
+  minio:
+    container_name: minio
+    image: docker.io/bitnami/minio:latest
+    ports:
+     - "9000:9000"
+     - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123
+      MINIO_DEFAULT_BUCKETS: "mlflow-artifacts"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mlflow-network
+
+  mlflow:
+    container_name: mlflow
+    build:
+      context: .
+      target: mlflow-server
+    ports:
+      - "5000:5000"
+    environment:
+      # Build env
+      BACKEND_URI: "postgresql://mlflow:mlflow_pass@postgres:5432"
+      ARTIFACT_ROOT: "s3://mlflow-artifacts/"
+      # AWS creds
+      AWS_ACCESS_KEY_ID: "admin"
+      AWS_SECRET_ACCESS_KEY: "admin123"
+      # MLflow env
+      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
+    depends_on:
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    networks:
+      - mlflow-network
+
+  diabetes-model-server:
+    container_name: diabetes-model-server
+    profiles:
+      - model-server
+    build:
+      context: .
+      target: model-server
+    ports:
+      - "7000:7000"
+    environment:
+      AWS_ACCESS_KEY_ID: "admin"
+      AWS_SECRET_ACCESS_KEY: "admin123"
+      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
+      BACKEND_URI: "postgresql://mlflow:mlflow_pass@postgres:5432"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"  # Critical addition
+      MODEL_URI: "models:/diabetes-model@dev"
+    depends_on:
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    networks:
+      - mlflow-network
+
+  mlserver:
+    #image: seldonio/mlserver:1.7.0-mlflow
+    profiles:
+      - model-server
+    build:
+      context: .
+      target: mlserver
+    container_name: mlserver
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+      - "8082:8082"
+    environment:
+      - MLSERVER_MODELS_IMPLEMENTATION=mlserver_mlflow.MLflowRuntime
+      - MLSERVER_MODELS_URI=mlflow://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5000  # Explicitly set MLflow tracking URI
+      - MLFLOW_REGISTRY_URI=http://mlflow:5000  # Explicitly set registry URI
+      # MinIO Config
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin123
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_USE_SSL=false
+
+      # Debugging
+      - MLSERVER_DEBUG=true
+      - PYTHONDEBUG=1  # Enables Python debug output
+      - LOGLEVEL=DEBUG  # Forces MLServer internal debug logs
+      - MLSERVER_METRICS_ENDPOINT=/metrics  # Expose Prometheus endpoint
+      - MLSERVER_METRICS_PORT=8082          # Port for metrics (same as inference)
+    depends_on:
+      minio:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    volumes:
+      - ./model-settings/diabetes-model-settings.json:/mnt/models/diabetes-model/model-settings.json
+      #- ./model-settings/wine-model-settings.json:/mnt/models/elastic-wine/model-settings.json
+    networks:
+      - mlflow-network
+
+volumes:
+  postgres_data:
+  minio_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./storage/minio
+      o: bind
+
+networks:
+  mlflow-network:
+    name: mlflow-network
+    driver: bridge
