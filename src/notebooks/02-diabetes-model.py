@@ -67,7 +67,7 @@ from sklearn.model_selection import train_test_split
 # %% [markdown]
 # Set default values for env variables. These will be overwritten when running inside docker container.
 
-# %%
+# %% tags=["parameters"]
 # Defaults to be changed when run inside docker
 os.environ.setdefault("AWS_ACCESS_KEY_ID", "admin")
 os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "admin123")
@@ -297,13 +297,17 @@ max_features_range = (2, 20)
 min_samples_leaf_range = (1, 100)
 
 max_search_attempts = 5
+import scrapbook as sb
 
 # Create a parent run for all the attempts
 with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
+
     # Enable MLflow's automatic experiment tracking for scikit-learn
     mlflow.sklearn.autolog(log_models=False)  # Model is logged separately below
 
     print(f"Starting hyperparameter search under parent run {parent_run.info.run_id}")
+    # Record the run ID using scrapbook
+    sb.glue("mlflow_run_id", parent_run.info.run_id)
 
     best_run = None
     improvement_found = False

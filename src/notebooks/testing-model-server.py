@@ -31,6 +31,12 @@
 # ## Calls to Dagster
 
 # %% editable=true slideshow={"slide_type": ""} tags=[]
+import time
+
+from dagster import DagsterRunStatus
+from dagster_graphql import DagsterGraphQLClient
+from dagster_graphql import DagsterGraphQLClientError
+
 # Function to wait for completion
 def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
     start_time = time.time()
@@ -56,11 +62,6 @@ def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
 
 
 # %%
-import time
-
-from dagster import DagsterRunStatus
-from dagster_graphql import DagsterGraphQLClient
-from dagster_graphql import DagsterGraphQLClientError
 
 client = DagsterGraphQLClient("localhost", port_number=3000)
 

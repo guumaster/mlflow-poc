@@ -23,6 +23,7 @@ dependencies = [
     "pre-commit (>=4.2.0,<5.0.0)",
     "flake8 (>=7.2.0,<8.0.0)",
     "nbqa (>=1.9.1,<2.0.0)",
+    "scrapbook[all] (>=0.5.0,<0.6.0)",
 ]
 
 
@@ -35,7 +36,7 @@ dagster-postgres = "0.26.7"
 dagster-webserver = "1.10.7"
 dagster-msteams = "0.26.7"
 dagster-docker = "0.26.7"
-papermill = "2.5.0"
+papermill = "2.6.0"
 
 
 [tool.poetry.group.dev.dependencies]
