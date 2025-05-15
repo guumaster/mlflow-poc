@@ -1,0 +1,53 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-executables-have-shebangs
+
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        exclude: src/notebooks/.*\.py
+        args: ["--line-length=120"]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+        exclude: src/notebooks/.*\.py
+
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.2.0
+    hooks:
+      - id: flake8
+        exclude: src/notebooks/.*\.py
+        args: ["--max-line-length=120"]
+
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.9.1
+    hooks:
+      - id: nbqa-black
+        additional_dependencies: [black]
+        args: ["--line-length=120"]
+
+  # Jupytext: Sync .ipynb with paired .py files and clean metadata
+  - repo: local
+    hooks:
+      - id: jupytext-sync
+        name: Jupytext Sync
+        entry: |
+           jupytext --sync
+        language: python
+        files: \.ipynb$  # Target only Jupyter Notebooks
+        types: [file]
+        additional_dependencies: [jupytext, black]  # Install deps automatically
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+        files: \.ipynb$

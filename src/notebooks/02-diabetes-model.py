@@ -1,7 +1,10 @@
 # ---
 # jupyter:
+#   execution:
+#     iopub_status: {}
 #   jupytext:
 #     cell_metadata_filter: all,-pycharm
+#     formats: ipynb,py:percent
 #     notebook_metadata_filter: all,-pycharm
 #     text_representation:
 #       extension: .py
@@ -37,8 +40,9 @@
 # %% [markdown]
 # Import all libraries and extensions
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.720070Z", "start_time": "2025-05-15T12:13:17.870757Z"}
+# %%
 import sys
+
 sys.path.append("./extensions")
 
 # %load_ext skip_kernel_extension
@@ -64,31 +68,30 @@ from sklearn.model_selection import train_test_split
 # %% [markdown]
 # Set default values for env variables. These will be overwritten when running inside docker container.
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.843802Z", "start_time": "2025-05-15T12:13:19.840695Z"}
-
+# %%
 # Defaults to be changed when run inside docker
-os.environ.setdefault('AWS_ACCESS_KEY_ID', 'admin')
-os.environ.setdefault('AWS_SECRET_ACCESS_KEY', 'admin123')
-os.environ.setdefault('MLFLOW_S3_ENDPOINT_URL', 'http://localhost:9000')
-os.environ.setdefault('MLFLOW_TRACKING_URI', 'http://localhost:5000')
-os.environ.setdefault('SKIP_INFERENCE', 'false')
+os.environ.setdefault("AWS_ACCESS_KEY_ID", "admin")
+os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "admin123")
+os.environ.setdefault("MLFLOW_S3_ENDPOINT_URL", "http://localhost:9000")
+os.environ.setdefault("MLFLOW_TRACKING_URI", "http://localhost:5000")
+os.environ.setdefault("SKIP_INFERENCE", "false")
 
 # Set variables
-aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID']
-aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
-mlflow_s3_endpoint_url = os.environ['MLFLOW_S3_ENDPOINT_URL']
-mlflow_tracking_uri = os.environ['MLFLOW_TRACKING_URI']
-skip_inference = os.environ['SKIP_INFERENCE'].lower() == 'true'
+aws_access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
+aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]
+mlflow_s3_endpoint_url = os.environ["MLFLOW_S3_ENDPOINT_URL"]
+mlflow_tracking_uri = os.environ["MLFLOW_TRACKING_URI"]
+skip_inference = os.environ["SKIP_INFERENCE"].lower() == "true"
 
 # For inference
-os.environ.setdefault('MODEL_SERVER_URL', 'http://localhost:8080')
-model_server_url = os.environ['MODEL_SERVER_URL']
+os.environ.setdefault("MODEL_SERVER_URL", "http://localhost:8080")
+model_server_url = os.environ["MODEL_SERVER_URL"]
 
 
 # %% [markdown]
 # MLflow configuration
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.934741Z", "start_time": "2025-05-15T12:13:19.872382Z"}
+# %%
 experiment_name = "Diabetes Model"
 model_name = "diabetes-model"
 
@@ -104,8 +107,14 @@ experiment = mlflow.set_experiment(experiment_name)
 # %% [markdown]
 # ##### Add some helper functions
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.947555Z", "start_time": "2025-05-15T12:13:19.943054Z"}
-def compare_metrics(client: MlflowClient, current_run_id: str, baseline_run_id: str, metrics_to_compare: Dict[str, str]):
+
+# %%
+def compare_metrics(
+    client: MlflowClient,
+    current_run_id: str,
+    baseline_run_id: str,
+    metrics_to_compare: Dict[str, str],
+):
     """
     Compare the performance of two runs based on given metrics.
 
@@ -151,30 +160,108 @@ def generate_random_run_name():
         str: A string with the name in lowercase, containing an adjective and noun, followed by a 3-digit suffix.
     """
     adjectives = [
-        "Transonic", "Hypersonic", "Afterburning", "Turbocharged",
-        "Supersonic", "Machbreaking", "Scramjet", "Thrustvectored",
-        "Stratospheric", "Tropospheric", "Cloudpiercing", "Jetstreamed",
-        "Contrailswept", "Headwinded", "Tailwinded", "Crosswinded",
-        "Flybywire", "Autothrottle", "Glasscockpit", "Headup",
-        "Skybound", "Runwaylit", "Aileronrolled", "Flapsdown",
-        "Chocksaway", "Clearedfortakeoff", "Finalapproach", "Goaround",
-        "Quantum", "Neural", "Plasma", "Gravitic", "Singularity",
-        "Nanotech", "Exo", "Hyperspace", "Photon", "Cloaking",
-        "Tachyon", "Warp", "Zero-G", "Cybernetic", "Holographic",
-        "Ion", "Antimatter", "Bioengineered", "Psi", "Chronojump"
+        "Transonic",
+        "Hypersonic",
+        "Afterburning",
+        "Turbocharged",
+        "Supersonic",
+        "Machbreaking",
+        "Scramjet",
+        "Thrustvectored",
+        "Stratospheric",
+        "Tropospheric",
+        "Cloudpiercing",
+        "Jetstreamed",
+        "Contrailswept",
+        "Headwinded",
+        "Tailwinded",
+        "Crosswinded",
+        "Flybywire",
+        "Autothrottle",
+        "Glasscockpit",
+        "Headup",
+        "Skybound",
+        "Runwaylit",
+        "Aileronrolled",
+        "Flapsdown",
+        "Chocksaway",
+        "Clearedfortakeoff",
+        "Finalapproach",
+        "Goaround",
+        "Quantum",
+        "Neural",
+        "Plasma",
+        "Gravitic",
+        "Singularity",
+        "Nanotech",
+        "Exo",
+        "Hyperspace",
+        "Photon",
+        "Cloaking",
+        "Tachyon",
+        "Warp",
+        "Zero-G",
+        "Cybernetic",
+        "Holographic",
+        "Ion",
+        "Antimatter",
+        "Bioengineered",
+        "Psi",
+        "Chronojump",
     ]
 
     nouns = [
-        "Turbofan", "Tailfin", "Flaps", "Ailerons", "Elevator", "Rudder",
-        "Spoilers", "Slats", "Throttle", "Yawdamper", "Stick", "Pedals",
-        "Tarmac", "Hangar", "Airstrip", "Runway", "Taxiway", "Apron",
-        "Jetbridge", "Windsock", "Glideslope", "Localizer", "Gliderail",
-        "Flightdeck", "Blackbox", "Transponder", "Squawkbox",
-        "Takeoff", "Landing", "Approach", "Holdingpattern",
-        "Jumpgate", "Thruster", "Pulsejet", "Shield", "Wormhole",
-        "Drone", "Neurohelm", "Gravcoil", "Phasewings", "Starfighter",
-        "Titanium", "Voidship", "Lasercannon", "AI", "Stasis",
-        "Dyson", "Warpcore", "Omnitool", "Singularity", "Hoverpad"
+        "Turbofan",
+        "Tailfin",
+        "Flaps",
+        "Ailerons",
+        "Elevator",
+        "Rudder",
+        "Spoilers",
+        "Slats",
+        "Throttle",
+        "Yawdamper",
+        "Stick",
+        "Pedals",
+        "Tarmac",
+        "Hangar",
+        "Airstrip",
+        "Runway",
+        "Taxiway",
+        "Apron",
+        "Jetbridge",
+        "Windsock",
+        "Glideslope",
+        "Localizer",
+        "Gliderail",
+        "Flightdeck",
+        "Blackbox",
+        "Transponder",
+        "Squawkbox",
+        "Takeoff",
+        "Landing",
+        "Approach",
+        "Holdingpattern",
+        "Jumpgate",
+        "Thruster",
+        "Pulsejet",
+        "Shield",
+        "Wormhole",
+        "Drone",
+        "Neurohelm",
+        "Gravcoil",
+        "Phasewings",
+        "Starfighter",
+        "Titanium",
+        "Voidship",
+        "Lasercannon",
+        "AI",
+        "Stasis",
+        "Dyson",
+        "Warpcore",
+        "Omnitool",
+        "Singularity",
+        "Hoverpad",
     ]
 
     random_adjective = random.choice(adjectives).lower()
@@ -189,24 +276,16 @@ def generate_random_run_name():
 # %% [markdown]
 # #### Load datatest and previous metrics
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.974730Z", "start_time": "2025-05-15T12:13:19.966919Z"}
+# %%
 dataset = datasets.load_diabetes()
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.996617Z", "start_time": "2025-05-15T12:13:19.986655Z"}
+# %%
 latest_run = None
-latest_metrics = {
-    "test_rmse": None,
-    "test_mae": None,
-    "test_r2": None
-}
+latest_metrics = {"test_rmse": None, "test_mae": None, "test_r2": None}
 res = []
 
 if experiment:
-    res = mlflow_client.search_runs(
-        experiment.experiment_id,
-        order_by=["attributes.start_time DESC"],
-        max_results=1
-    )
+    res = mlflow_client.search_runs(experiment.experiment_id, order_by=["attributes.start_time DESC"], max_results=1)
     if len(res) > 0:
         latest_run = res[0]
         latest_metrics = latest_run.data.metrics
@@ -215,7 +294,7 @@ if experiment:
 # %% [markdown]
 # ## Model Training with MLflow
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.551302Z", "start_time": "2025-05-15T12:13:20.007468Z"}
+# %%
 # Define the hyperparameter ranges
 n_estimators_range = (10, 600)
 max_depth_range = (5, 30)
@@ -228,7 +307,7 @@ max_search_attempts = 5
 with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
     # Enable MLflow's automatic experiment tracking for scikit-learn
     mlflow.sklearn.autolog(
-        log_models=False, # Model is logged separately below
+        log_models=False,  # Model is logged separately below
     )
 
     print(f"Starting hyperparameter search under parent run {parent_run.info.run_id}")
@@ -261,7 +340,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
                 max_depth=max_depth,
                 max_features=max_features,
                 min_samples_leaf=min_samples_leaf,
-                random_state=random_seed
+                random_state=random_seed,
             )
 
             # MLflow triggers logging automatically upon model fitting
@@ -277,7 +356,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
             current_metrics = {
                 "test_rmse": current_rmse,
                 "test_mae": current_mae,
-                "test_r2": current_r2
+                "test_r2": current_r2,
             }
 
             mlflow.log_metrics(current_metrics, run_id=child_run.info.run_id)
@@ -287,11 +366,10 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
             mlflow.sklearn.log_model(
                 sk_model=rf,
                 artifact_path="model",
-                #registered_model_name=model_name,
+                # registered_model_name=model_name,
                 extra_pip_requirements=["boto3==1.38.16"],
-            
                 input_example=X_train[:5],  # Example input for schema inference
-                signature=mlflow.models.infer_signature(X_train, y_pred)  # Model signature
+                signature=mlflow.models.infer_signature(X_train, y_pred),  # Model signature
             )
 
             if latest_run is None:
@@ -300,7 +378,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
                 improvement_found = True
                 break
 
-          # Compare metrics
+            # Compare metrics
             improvement = compare_metrics(
                 mlflow_client,
                 child_run.info.run_id,
@@ -309,7 +387,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
                     "test_r2": "higher",
                     "test_rmse": "lower",
                     "test_mae": "lower",
-                }
+                },
             )
 
             # Print improvement status
@@ -322,7 +400,6 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
                 improvement_found = True
                 break
 
-
     # After all attempts (or early exit)
     if improvement_found:
         print(f"\n🎉 Found improved model after {attempt} attempts")
@@ -334,7 +411,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
     else:
         print(f"\n🔴 No improvement found after {max_search_attempts} attempts")
         # Close the experiment as failure if no improvements found
-        mlflow.end_run('FAILED')
+        mlflow.end_run("FAILED")
         if latest_run:
             print("Keeping the previous best model")
         else:
@@ -348,11 +425,11 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
 #
 # This checkbox can be marked to skip all subsequent cells during Dagster run.
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.597949Z", "start_time": "2025-05-15T12:13:23.558711Z"}
+# %%
 from ipywidgets import Checkbox
 
 skip_inference = Checkbox(
-    value=os.environ['SKIP_INFERENCE'].lower() == 'true',
+    value=os.environ["SKIP_INFERENCE"].lower() == "true",
     description="Skip inference",
     disabled=False,
     indent=False,
@@ -366,11 +443,13 @@ skip_inference
 # %% [markdown]
 # ##### Load the model with MLflowClient
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.790740Z", "start_time": "2025-05-15T12:13:23.614454Z"}
+# %%
 # %%skip $skip_inference.value
 
 latest_version_info = mlflow_client.get_model_version_by_alias(model_name, "dev")
-print(f"Latest model version: {latest_version_info.version}. Alias: {latest_version_info.aliases}")
+print(
+    f"Latest model version: {latest_version_info.version}. Alias: {latest_version_info.aliases}"
+)
 
 # model_uri ="models:/diabetes-model@dev"
 model_uri = f"models:/{model_name}/{latest_version_info.version}"
@@ -382,7 +461,7 @@ latest_model
 # %% [markdown]
 # #### Make predictions for all dataset
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.853254Z", "start_time": "2025-05-15T12:13:23.803501Z"}
+# %%
 # %%skip $skip_inference.value
 
 # Convert diabetes data to a Pandas DataFrame
@@ -410,7 +489,7 @@ diabetes_result_with_predictions.head()
 # %% [markdown]
 # Ensure mlserver container is running in docker
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:13:51.596526Z", "start_time": "2025-05-15T12:13:50.351760Z"} language="bash"
+# %% language="bash"
 # [ "$SKIP_INFERENCE" = true ] && echo "SKIP: $SKIP_INFERENCE" && exit 0
 #
 # docker-compose up -d mlserver
@@ -422,38 +501,42 @@ diabetes_result_with_predictions.head()
 # %% [markdown]
 # Make a single prediction
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.803428Z", "start_time": "2025-05-15T12:14:01.762841Z"}
+# %%
 # %%skip $skip_inference.value
 
 # select random row
-row = diabetes_result.sample().iloc[0].to_list() # Select a random row from the dataset
+row = diabetes_result.sample().iloc[0].to_list()  # Select a random row from the dataset
 
-response = requests.post(f"{model_server_url}/invocations", json={
-    "dataframe_split": {
-        "columns": diabetes_result.columns.to_list(),
-        "data": [row]
-    }
-})
+response = requests.post(
+    f"{model_server_url}/invocations",
+    json={
+        "dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": [row]}
+    },
+)
 
 print(json.dumps(response.json(), indent=4))
 
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.854685Z", "start_time": "2025-05-15T12:14:01.830524Z"}
+# %%
 # %%skip $skip_inference.value
 
 # select first/last rows
-first_last = pd.concat([
-    diabetes_result.iloc[[0]],
-    diabetes_result.iloc[[-1]],
+first_last = pd.concat(
+    [
+        diabetes_result.iloc[[0]],
+        diabetes_result.iloc[[-1]],
     ]
 )
 
-response = requests.post(f"{model_server_url}/invocations", json={
-    "dataframe_split": {
-        "columns": diabetes_result.columns.to_list(),
-        "data": first_last.values.tolist()
-    }
-})
+response = requests.post(
+    f"{model_server_url}/invocations",
+    json={
+        "dataframe_split": {
+            "columns": diabetes_result.columns.to_list(),
+            "data": first_last.values.tolist(),
+        }
+    },
+)
 
 print(json.dumps(response.json(), indent=4))
 
@@ -461,25 +544,28 @@ print(json.dumps(response.json(), indent=4))
 # %% [markdown]
 # Make prediction for all rows in a dataframe
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.908619Z", "start_time": "2025-05-15T12:14:01.873199Z"}
-response = requests.post(f"{model_server_url}/invocations", json={
-    "dataframe_split": {
-        "columns": diabetes_result.columns.to_list(),
-        "data": diabetes_result.values.tolist()
-    }
-})
+# %%
+response = requests.post(
+    f"{model_server_url}/invocations",
+    json={
+        "dataframe_split": {
+            "columns": diabetes_result.columns.to_list(),
+            "data": diabetes_result.values.tolist(),
+        }
+    },
+)
 response_data = response.json()
 # print(json.dumps(response_data, indent=4))
 
 diabetes_result_with_predictions = diabetes_result.copy()
-diabetes_result_with_predictions['predictions_response'] = response_data["predictions"]
+diabetes_result_with_predictions["predictions_response"] = response_data["predictions"]
 
 diabetes_result_with_predictions
 
 # %% [markdown]
 # Check model server status
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.957231Z", "start_time": "2025-05-15T12:14:01.942250Z"}
+# %%
 # %%skip $skip_inference.value
 
 response = requests.post(f"{model_server_url}/v2/repository/index", json={})
@@ -492,13 +578,12 @@ print(pretty_json)
 # %% [markdown]
 # Force a model reload on model server
 
-# %% ExecuteTime={"end_time": "2025-05-15T12:14:02.123321Z", "start_time": "2025-05-15T12:14:01.991129Z"}
+# %%
 # %%skip $skip_inference.value
 
 response = requests.post(
-            f"{model_server_url}/v2/repository/models/diabetes-model/load",
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
+    f"{model_server_url}/v2/repository/models/diabetes-model/load",
+    headers={"Content-Type": "application/json"},
+    timeout=10,
+)
 response.raise_for_status()
-

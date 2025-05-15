@@ -33,7 +33,7 @@ MinIO Console: http://localhost:9001 (Login with admin/admin123)
 
 ```bash
 # Start Jupyter Lab with Poetry (load only ipynb files)
- poetry run jupyter-lab --notebook-dir=./src/notebooks 
+ poetry run jupyter-lab --notebook-dir=./src/notebooks
 ```
 
 

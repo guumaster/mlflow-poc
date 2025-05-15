@@ -1,7 +1,10 @@
 # ---
 # jupyter:
+#   execution:
+#     iopub_status: {}
 #   jupytext:
 #     cell_metadata_filter: all,-pycharm
+#     formats: ipynb,py:percent
 #     notebook_metadata_filter: all,-pycharm
 #     text_representation:
 #       extension: .py
@@ -32,9 +35,8 @@
 
 # %%
 # Config for diabetes-model-server
-# %env MODEL_SERVER_URL=http://localhost:7000
+# %env MODEL_SERVER_URL=http: // localhost:7000
 # %env MODEL_NAME=mlflow-model
-
 
 
 # %% language="bash"
@@ -58,7 +60,7 @@
 # %% [markdown]
 # ### Calls to server
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.099537Z", "start_time": "2025-05-15T11:15:23.827935Z"} language="bash"
+# %% language="bash"
 #
 # curl -X POST -s "${MODEL_SERVER_URL}/v2/models/${MODEL_NAME}/infer" \
 #      -H "Content-Type: application/json" \
@@ -77,11 +79,11 @@
 #          }' | jq
 #
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.142609Z", "start_time": "2025-05-15T11:15:24.108514Z"} language="bash"
+# %% language="bash"
 # curl -X GET -s "${MODEL_SERVER_URL}/v2/models/${MODEL_NAME}" | jq
 #
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.227694Z", "start_time": "2025-05-15T11:15:24.159253Z"} language="bash"
+# %% language="bash"
 # curl -s -X POST ${MODEL_SERVER_URL}/invocations \
 #  -H "Content-Type: application/json" \
 #   -d '{
@@ -100,12 +102,12 @@
 # %% [markdown]
 # ##### Force model unload/load with curl
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.299953Z", "start_time": "2025-05-15T11:15:24.240664Z"} language="bash"
+# %% language="bash"
 #
 # curl -s  -X POST "${MODEL_SERVER_URL}/v2/repository/models/${MODEL_NAME}/unload"
 #
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.685170Z", "start_time": "2025-05-15T11:15:24.308048Z"} language="bash"
+# %% language="bash"
 #
 # curl -s -X POST "${MODEL_SERVER_URL}/v2/repository/models/${MODEL_NAME}/load" | jq
 #
@@ -113,7 +115,7 @@
 # %% [markdown]
 # Check model status with repository index call
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.717244Z", "start_time": "2025-05-15T11:15:24.692559Z"} language="bash"
+# %% language="bash"
 #
 # curl -s -X POST "${MODEL_SERVER_URL}/v2/repository/index" \
 #   -H "Content-Type: application/json" \
@@ -122,7 +124,7 @@
 # %% [markdown]
 # #### Using Custom docker container model-server
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.761049Z", "start_time": "2025-05-15T11:15:24.726037Z"} language="bash"
+# %% language="bash"
 #
 # curl -s -X POST "${MODEL_SERVER_URL}/invocations" \
 #  -H "Content-Type: application/json" \
@@ -138,7 +140,7 @@
 #   | jq
 #
 
-# %% ExecuteTime={"end_time": "2025-05-15T11:15:24.794915Z", "start_time": "2025-05-15T11:15:24.770643Z"} language="bash"
+# %% language="bash"
 #
 # curl -s -X POST "${MODEL_SERVER_URL}/v2/repository/index" \
 #   -H "Content-Type: application/json" \

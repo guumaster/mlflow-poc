@@ -19,9 +19,31 @@ dependencies = [
     "jupytext (>=1.17.1,<2.0.0)",
     "mlserver (>=1.7.0,<2.0.0)",
     "mlserver-mlflow (>=1.7.0,<2.0.0)",
+    "nbstripout (>=0.8.1,<0.9.0)",
+    "pre-commit (>=4.2.0,<5.0.0)",
+    "flake8 (>=7.2.0,<8.0.0)",
+    "nbqa (>=1.9.1,<2.0.0)",
 ]
 
+
+[tool.poetry.group.dagster.dependencies]
+dagster = "1.10.7"
+dagster-aws = "0.26.7"
+dagster-cloud = "1.10.7"
+dagster-graphql = "1.10.7"
+dagster-postgres = "0.26.7"
+dagster-webserver = "1.10.7"
+dagster-msteams = "0.26.7"
+dagster-docker = "0.26.7"
+papermill = "2.5.0"
+
+
+[tool.poetry.group.dev.dependencies]
+black = {extras = ["jupyter"], version = "^25.1.0"}
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
