@@ -30,12 +30,13 @@
 # %% [markdown]
 # ## Calls to Dagster
 
-# %% editable=true slideshow={"slide_type": ""} tags=[]
+# %%
 import time
 
 from dagster import DagsterRunStatus
 from dagster_graphql import DagsterGraphQLClient
 from dagster_graphql import DagsterGraphQLClientError
+
 
 # Function to wait for completion
 
@@ -85,6 +86,18 @@ try:
 except Exception as e:
     print(f"Error while waiting for job completion: {e}")
     raise
+
+# %% language="bash"
+#
+# export MODEL_VERSION=$(curl -s -X GET "http://localhost:5000/api/2.0/mlflow/registered-models/alias?name=diabetes-model&alias=dev" \
+#     | jq -r '.model_version.version')
+#
+# echo "Model version: $MODEL_VERSION"
+#
+# echo "Restarting docker with latest version"
+#
+# docker-compose --profile model-server up -d  --force-recreate mlflow-diabetes-model
+#
 
 # %% [markdown] jp-MarkdownHeadingCollapsed=true
 # ## Testing calls to model server
