@@ -32,14 +32,13 @@
 #
 # Throughout this notebook, we'll be using the MLflow fluent API to perform all interactions with the MLflow Tracking Server.
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:28:07.790532Z", "start_time": "2025-05-10T13:28:07.744631Z"}
-from pandas.core.common import random_state
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:46.646889Z", "start_time": "2025-05-15T12:12:46.640987Z"}
 # %env AWS_ACCESS_KEY_ID=admin
 # %env AWS_SECRET_ACCESS_KEY=admin123
 # %env MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
 
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:28:07.870163Z", "start_time": "2025-05-10T13:28:07.863743Z"}
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:48.923310Z", "start_time": "2025-05-15T12:12:46.801988Z"}
 import os
 import pandas as pd
 from sklearn import datasets
@@ -59,7 +58,7 @@ from mlflow.models import infer_signature
 #
 # Please see [the guide to running notebooks here](https://www.mlflow.org/docs/latest/getting-started/running-notebooks/) for more information on setting the tracking server uri and configuring access to either managed or self-managed MLflow tracking servers.
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:28:07.888986Z", "start_time": "2025-05-10T13:28:07.886274Z"}
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:48.931140Z", "start_time": "2025-05-15T12:12:48.929652Z"}
 # NOTE: review the links mentioned above for guidance on connecting to a managed tracking server, such as the Databricks Managed MLflow
 
 mlflow.set_tracking_uri(uri="http://localhost:5000")
@@ -71,7 +70,7 @@ mlflow.set_tracking_uri(uri="http://localhost:5000")
 #
 # Note that the only MLflow-related activities in this portion are around the fact that we're using a `param` dictionary to supply our model's hyperparameters; this is to make logging these settings easier when we're ready to log our model and its associated metadata.
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:28:28.939151Z", "start_time": "2025-05-10T13:28:28.907193Z"}
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:48.958768Z", "start_time": "2025-05-15T12:12:48.942561Z"}
 # Load the Iris dataset
 X, y = datasets.load_iris(return_X_y=True)
 
@@ -99,7 +98,7 @@ accuracy = accuracy_score(y_test, y_pred)
 # In order to group any distinct runs of a particular project or idea together, we can define an Experiment that will group each iteration (runs) together. 
 # Defining a unique name that is relevant to what we're working on helps with organization and reduces the amount of work (searching) to find our runs later on.
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:28:33.861054Z", "start_time": "2025-05-10T13:28:33.685255Z"}
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:49.035643Z", "start_time": "2025-05-15T12:12:48.974264Z"}
 mlflow.set_experiment("MLflow Iris")
 
 # %% [markdown]
@@ -107,7 +106,13 @@ mlflow.set_experiment("MLflow Iris")
 #
 # In order to record our model and the hyperparameters that were used when fitting the model, as well as the metrics associated with validating the fit model upon holdout data, we initiate a run context, as shown below. Within the scope of that context, any fluent API that we call (such as `mlflow.log_params()` or `mlflow.sklearn.log_model()`) will be associated and logged together to the same run.
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:29:04.601891Z", "start_time": "2025-05-10T13:28:35.319869Z"}
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:52.220584Z", "start_time": "2025-05-15T12:12:49.052119Z"}
+params = {
+    "solver": "lbfgs",
+    "max_iter": 1000,
+    "multi_class": "auto",
+    "random_state": 8888
+}
 # Start an MLflow run
 with mlflow.start_run():
     # Log the hyperparameters
@@ -136,13 +141,13 @@ with mlflow.start_run():
 #
 # Although we can load our model back as a native scikit-learn format with `mlflow.sklearn.load_model()`, below we are loading the model as a generic Python Function, which is how this model would be loaded for online model serving. We can still use the `pyfunc` representation for batch use cases, though, as is shown below.
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:29:09.132133Z", "start_time": "2025-05-10T13:29:09.031788Z"}
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:52.387573Z", "start_time": "2025-05-15T12:12:52.232586Z"}
 loaded_model = mlflow.pyfunc.load_model(model_info.model_uri)
 
 # %% [markdown]
 # ## Use our model to predict the iris class type on a Pandas DataFrame
 
-# %% ExecuteTime={"end_time": "2025-05-10T13:29:12.183843Z", "start_time": "2025-05-10T13:29:12.176712Z"}
+# %% ExecuteTime={"end_time": "2025-05-15T12:12:52.409492Z", "start_time": "2025-05-15T12:12:52.398205Z"}
 predictions = loaded_model.predict(X_test)
 
 iris_feature_names = datasets.load_iris().feature_names

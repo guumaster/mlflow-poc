@@ -28,82 +28,83 @@
 # # Simple Workflow with MLFlow and S3
 
 # %% [markdown]
-# ## Step 1: Set up environment variables for AWS S3 and MLFlow
-#
-
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:07.455756Z", "start_time": "2025-05-11T00:18:07.447900Z"}
-from IPython.core.display_functions import clear_output
-# %env AWS_ACCESS_KEY_ID=admin
-# %env AWS_SECRET_ACCESS_KEY=admin123
-# %env MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
+# ## Setup
 
 # %% [markdown]
-# ## Step 2: Import necessary libraries and set up MLFlow
+# #### Set up environment
+#
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:07.585247Z", "start_time": "2025-05-11T00:18:07.477380Z"}
+# %% [markdown]
+# Import all libraries and extensions
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.720070Z", "start_time": "2025-05-15T12:13:17.870757Z"}
+import sys
+sys.path.append("./extensions")
+
+# %load_ext skip_kernel_extension
+
+from typing import Dict
+import os
+import json
+
 import random
+import requests
 
 import mlflow
 import numpy as np
 import pandas as pd
+
 from mlflow import MlflowClient
 from sklearn import datasets
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
-from IPython.display import clear_output
 
-experiment_name = "Simple Workflow"
+
+# %% [markdown]
+# Set default values for env variables. These will be overwritten when running inside docker container.
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.843802Z", "start_time": "2025-05-15T12:13:19.840695Z"}
+
+# Defaults to be changed when run inside docker
+os.environ.setdefault('AWS_ACCESS_KEY_ID', 'admin')
+os.environ.setdefault('AWS_SECRET_ACCESS_KEY', 'admin123')
+os.environ.setdefault('MLFLOW_S3_ENDPOINT_URL', 'http://localhost:9000')
+os.environ.setdefault('MLFLOW_TRACKING_URI', 'http://localhost:5000')
+os.environ.setdefault('SKIP_INFERENCE', 'false')
+
+# Set variables
+aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID']
+aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
+mlflow_s3_endpoint_url = os.environ['MLFLOW_S3_ENDPOINT_URL']
+mlflow_tracking_uri = os.environ['MLFLOW_TRACKING_URI']
+skip_inference = os.environ['SKIP_INFERENCE'].lower() == 'true'
+
+# For inference
+os.environ.setdefault('MODEL_SERVER_URL', 'http://localhost:8080')
+model_server_url = os.environ['MODEL_SERVER_URL']
+
+
+# %% [markdown]
+# MLflow configuration
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.934741Z", "start_time": "2025-05-15T12:13:19.872382Z"}
+experiment_name = "Diabetes Model"
 model_name = "diabetes-model"
-mlflow.set_tracking_uri(uri="http://localhost:5000")
+
+mlflow_client = MlflowClient(
+    tracking_uri=os.getenv("MLFLOW_TRACKING_URI"),
+    registry_uri=os.getenv("MLFLOW_TRACKING_URI"),
+)
+
+mlflow.set_tracking_uri(uri=os.getenv("MLFLOW_TRACKING_URI"))
 experiment = mlflow.set_experiment(experiment_name)
 
-print(f"Experiment Name: {experiment.name} with id: {experiment.experiment_id}")
-
-latest_run = None
-latest_metrics = {
-    "test_rmse": None,
-    "test_mae": None,
-    "test_r2": None
-}
-res = []
-client = MlflowClient()
-
 
 # %% [markdown]
-# ### Load latest metrics and display them
+# ##### Add some helper functions
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:07.663005Z", "start_time": "2025-05-11T00:18:07.600137Z"}
-
-if experiment:
-    res = client.search_runs(
-        experiment.experiment_id,
-        order_by=["attributes.start_time DESC"],
-        max_results=1
-    )
-
-if len(res) > 0:
-    latest_run = res[0]
-    # Get metrics from latest run (handle missing metrics gracefully)
-    latest_metrics["test_rmse"] = latest_run.data.metrics.get("test_rmse")
-    latest_metrics["test_mae"] = latest_run.data.metrics.get("test_mae")
-    latest_metrics["test_r2"] = latest_run.data.metrics.get("test_r2")
-
-    print(f"Comparing next run with latest run: {latest_metrics}")
-
-# %% [markdown]
-# ### Load diabetes dataset
-
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:07.688139Z", "start_time": "2025-05-11T00:18:07.679177Z"}
-dataset = datasets.load_diabetes()
-
-# %% [markdown]
-# ### Define helper functions
-
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:07.708862Z", "start_time": "2025-05-11T00:18:07.702544Z"}
-from typing import Dict
-
-
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.947555Z", "start_time": "2025-05-15T12:13:19.943054Z"}
 def compare_metrics(client: MlflowClient, current_run_id: str, baseline_run_id: str, metrics_to_compare: Dict[str, str]):
     """
     Compare the performance of two runs based on given metrics.
@@ -186,25 +187,49 @@ def generate_random_run_name():
 
 
 # %% [markdown]
-# ## Step 3: Randomize Hyperparameters for Model Training
+# #### Load datatest and previous metrics
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:15.849454Z", "start_time": "2025-05-11T00:18:07.721250Z"}
-from mlflow.entities import RunStatus
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.974730Z", "start_time": "2025-05-15T12:13:19.966919Z"}
+dataset = datasets.load_diabetes()
 
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:19.996617Z", "start_time": "2025-05-15T12:13:19.986655Z"}
+latest_run = None
+latest_metrics = {
+    "test_rmse": None,
+    "test_mae": None,
+    "test_r2": None
+}
+res = []
+
+if experiment:
+    res = mlflow_client.search_runs(
+        experiment.experiment_id,
+        order_by=["attributes.start_time DESC"],
+        max_results=1
+    )
+    if len(res) > 0:
+        latest_run = res[0]
+        latest_metrics = latest_run.data.metrics
+
+
+# %% [markdown]
+# ## Model Training with MLflow
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.551302Z", "start_time": "2025-05-15T12:13:20.007468Z"}
 # Define the hyperparameter ranges
-n_estimators_range = (10, 500)
-max_depth_range = (5, 20)
-max_features_range = (2, 10)
-min_samples_leaf_range = (1, 50)
+n_estimators_range = (10, 600)
+max_depth_range = (5, 30)
+max_features_range = (2, 20)
+min_samples_leaf_range = (1, 100)
 
 max_search_attempts = 5
 
 # Create a parent run for all the attempts
-with mlflow.start_run(
-        run_name=generate_random_run_name(),
-) as parent_run:
+with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
     # Enable MLflow's automatic experiment tracking for scikit-learn
-    mlflow.sklearn.autolog()
+    mlflow.sklearn.autolog(
+        log_models=False, # Model is logged separately below
+    )
 
     print(f"Starting hyperparameter search under parent run {parent_run.info.run_id}")
 
@@ -258,6 +283,17 @@ with mlflow.start_run(
             mlflow.log_metrics(current_metrics, run_id=child_run.info.run_id)
             mlflow.log_metrics(current_metrics, run_id=parent_run.info.run_id, step=attempt)
 
+            # Log the model with dependencies and metadata
+            mlflow.sklearn.log_model(
+                sk_model=rf,
+                artifact_path="model",
+                #registered_model_name=model_name,
+                extra_pip_requirements=["boto3==1.38.16"],
+            
+                input_example=X_train[:5],  # Example input for schema inference
+                signature=mlflow.models.infer_signature(X_train, y_pred)  # Model signature
+            )
+
             if latest_run is None:
                 print("✅ No previous run found, this will be our baseline")
                 best_run = child_run
@@ -266,7 +302,7 @@ with mlflow.start_run(
 
           # Compare metrics
             improvement = compare_metrics(
-                client,
+                mlflow_client,
                 child_run.info.run_id,
                 latest_run.info.run_id,
                 {
@@ -292,7 +328,7 @@ with mlflow.start_run(
         print(f"\n🎉 Found improved model after {attempt} attempts")
         model_uri = f"runs:/{best_run.info.run_id}/model"
         model_version = mlflow.register_model(model_uri, model_name)
-        client.set_registered_model_alias(name=model_name, alias="dev", version=model_version.version)
+        mlflow_client.set_registered_model_alias(name=model_name, alias="dev", version=model_version.version)
         latest_run = best_run
         print(f"Model registered as '{model_name}' version {model_version.version}")
     else:
@@ -305,15 +341,49 @@ with mlflow.start_run(
             print("No model was registered (no baseline found)")
 
 # %% [markdown]
-# ## Step 5: Load and Use the Model
+# ## Predictions
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:15.991967Z", "start_time": "2025-05-11T00:18:15.863213Z"}
-# Get the model version (correct approach)
+# %% [markdown]
+# ##### Skip inference cells
+#
+# This checkbox can be marked to skip all subsequent cells during Dagster run.
 
-latest_version_info = client.get_model_version_by_alias(model_name, "dev")
-print(f"Loaded model version: {latest_version_info.version}. Alias: {latest_version_info.aliases}")
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.597949Z", "start_time": "2025-05-15T12:13:23.558711Z"}
+from ipywidgets import Checkbox
 
-latest_model = mlflow.pyfunc.load_model(f"models:/{model_name}/{latest_version_info.version}")
+skip_inference = Checkbox(
+    value=os.environ['SKIP_INFERENCE'].lower() == 'true',
+    description="Skip inference",
+    disabled=False,
+    indent=False,
+)
+
+skip_inference
+
+# %% [markdown]
+# #### Load the model
+
+# %% [markdown]
+# ##### Load the model with MLflowClient
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.790740Z", "start_time": "2025-05-15T12:13:23.614454Z"}
+# %%skip $skip_inference.value
+
+latest_version_info = mlflow_client.get_model_version_by_alias(model_name, "dev")
+print(f"Latest model version: {latest_version_info.version}. Alias: {latest_version_info.aliases}")
+
+# model_uri ="models:/diabetes-model@dev"
+model_uri = f"models:/{model_name}/{latest_version_info.version}"
+
+latest_model = mlflow.pyfunc.load_model(model_uri)
+
+latest_model
+
+# %% [markdown]
+# #### Make predictions for all dataset
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:23.853254Z", "start_time": "2025-05-15T12:13:23.803501Z"}
+# %%skip $skip_inference.value
 
 # Convert diabetes data to a Pandas DataFrame
 X_test = pd.DataFrame(dataset.data, columns=dataset.feature_names)
@@ -325,67 +395,110 @@ predictions = latest_model.predict(X_test)
 diabetes_result = pd.DataFrame(X_test, columns=dataset.feature_names)
 # Since we don't have actual classes for the diabetes dataset, we can't add them
 # diabetes_result["actual_class"] = y_test (commented out as not applicable)
+diabetes_result_with_predictions = diabetes_result.copy()
 
 # Add the model predictions to the DataFrame
-diabetes_result["predicted_value"] = predictions
+diabetes_result_with_predictions["predicted_value"] = predictions
 
-diabetes_result[:4]
+print("Diabetes result shape:", diabetes_result_with_predictions.shape)
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:16.118956Z", "start_time": "2025-05-11T00:18:16.022759Z"}
-
-model = mlflow.pyfunc.load_model("models:/diabetes-model@dev")
-print(model)
+diabetes_result_with_predictions.head()
 
 # %% [markdown]
-# ### Invoke model server with CURL
+# #### Use model server
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:16.410762Z", "start_time": "2025-05-11T00:18:16.156001Z"} language="bash"
-# curl -X POST -s http://localhost:8080/v2/models/diabetes-model/infer \
-#      -H "Content-Type: application/json" \
-#      -d '{
-#            "inputs": [
-#              {
-#                "name": "input-0",
-#                "shape": [1, 10],
-#                "datatype": "FP64",
-#                "data": [0.038076, 0.050680, 0.061696, 0.021872, -0.044223, -0.034821, -0.043401, -0.002592, 0.019907, -0.017646]
-#              }
-#            ]
-#          }' | jq
+# %% [markdown]
+# Ensure mlserver container is running in docker
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:13:51.596526Z", "start_time": "2025-05-15T12:13:50.351760Z"} language="bash"
+# [ "$SKIP_INFERENCE" = true ] && echo "SKIP: $SKIP_INFERENCE" && exit 0
+#
+# docker-compose up -d mlserver
 #
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:19:15.210137Z", "start_time": "2025-05-11T00:19:15.129042Z"} language="bash"
-# curl -X GET -s http://localhost:8080/v2/models/diabetes-model | jq
-#
+# %% [markdown]
+# ##### Make predictions through model server
 
-# %% ExecuteTime={"end_time": "2025-05-11T00:18:16.489392Z", "start_time": "2025-05-11T00:18:16.432671Z"} language="bash"
-#
-#
-# curl -s -X POST http://localhost:7000/invocations \
-#  -H "Content-Type: application/json" \
-#   -d '{"dataframe_split": {"columns": ["age", "sex", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6"], "data": [[0.038076, 0.050680, 0.061696, 0.021872, -0.044223, -0.034821, -0.043401, -0.002592, 0.019907, -0.017646]]}}' \
-#   | jq
-#
+# %% [markdown]
+# Make a single prediction
 
-# %% ExecuteTime={"end_time": "2025-05-11T01:02:14.476104Z", "start_time": "2025-05-11T01:02:14.266723Z"} language="bash"
-# curl -s -X POST http://localhost:8080/invocations \
-#  -H "Content-Type: application/json" \
-#   -d '{"dataframe_split": {"columns": ["age", "sex", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6"], "data": [[0.038076, 0.050680, 0.061696, 0.021872, -0.044223, -0.034821, -0.043401, -0.002592, 0.019907, -0.017646]]}}' \
-#   | jq
-#
-#
+# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.803428Z", "start_time": "2025-05-15T12:14:01.762841Z"}
+# %%skip $skip_inference.value
 
-# %% ExecuteTime={"end_time": "2025-05-12T08:46:30.702132Z", "start_time": "2025-05-12T08:46:29.854802Z"}
-import requests
+# select random row
+row = diabetes_result.sample().iloc[0].to_list() # Select a random row from the dataset
 
-inference_request = {
+response = requests.post(f"{model_server_url}/invocations", json={
     "dataframe_split": {
-        "columns": ["age", "sex", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6"],
-        "data": [[0.138076, 0.050680, 0.061696, 0.021872, -0.044223, -0.034821, -0.043401, -0.002592, 0.019907, -0.017646]]
+        "columns": diabetes_result.columns.to_list(),
+        "data": [row]
     }
-}
+})
 
-endpoint = "http://localhost:8080/invocations"
-response = requests.post(endpoint, json=inference_request)
+print(json.dumps(response.json(), indent=4))
 
-response.json()
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.854685Z", "start_time": "2025-05-15T12:14:01.830524Z"}
+# %%skip $skip_inference.value
+
+# select first/last rows
+first_last = pd.concat([
+    diabetes_result.iloc[[0]],
+    diabetes_result.iloc[[-1]],
+    ]
+)
+
+response = requests.post(f"{model_server_url}/invocations", json={
+    "dataframe_split": {
+        "columns": diabetes_result.columns.to_list(),
+        "data": first_last.values.tolist()
+    }
+})
+
+print(json.dumps(response.json(), indent=4))
+
+
+# %% [markdown]
+# Make prediction for all rows in a dataframe
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.908619Z", "start_time": "2025-05-15T12:14:01.873199Z"}
+response = requests.post(f"{model_server_url}/invocations", json={
+    "dataframe_split": {
+        "columns": diabetes_result.columns.to_list(),
+        "data": diabetes_result.values.tolist()
+    }
+})
+response_data = response.json()
+# print(json.dumps(response_data, indent=4))
+
+diabetes_result_with_predictions = diabetes_result.copy()
+diabetes_result_with_predictions['predictions_response'] = response_data["predictions"]
+
+diabetes_result_with_predictions
+
+# %% [markdown]
+# Check model server status
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:14:01.957231Z", "start_time": "2025-05-15T12:14:01.942250Z"}
+# %%skip $skip_inference.value
+
+response = requests.post(f"{model_server_url}/v2/repository/index", json={})
+pretty_json = json.dumps(response.json(), indent=4)
+print(pretty_json)
+
+# %% [markdown]
+# Force a model reload with latest version
+
+# %% [markdown]
+# Force a model reload on model server
+
+# %% ExecuteTime={"end_time": "2025-05-15T12:14:02.123321Z", "start_time": "2025-05-15T12:14:01.991129Z"}
+# %%skip $skip_inference.value
+
+response = requests.post(
+            f"{model_server_url}/v2/repository/models/diabetes-model/load",
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+response.raise_for_status()
+
