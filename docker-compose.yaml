@@ -42,18 +42,22 @@ services:
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=admin123
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - SKIP_INFERENCE=true
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000/server_info || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
     depends_on:
       mlflow:
         condition: service_started
+      minio:
+        condition: service_healthy
     networks:
       - mlflow-network
     volumes:
       - ./src/notebooks:/usr/src/app/notebooks
+      - ./src/dagster_job:/usr/src/app/src/dagster_job
 
   postgres:
     container_name: postgres

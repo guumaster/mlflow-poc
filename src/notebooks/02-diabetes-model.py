@@ -64,7 +64,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 
-
 # %% [markdown]
 # Set default values for env variables. These will be overwritten when running inside docker container.
 
@@ -96,8 +95,7 @@ experiment_name = "Diabetes Model"
 model_name = "diabetes-model"
 
 mlflow_client = MlflowClient(
-    tracking_uri=os.getenv("MLFLOW_TRACKING_URI"),
-    registry_uri=os.getenv("MLFLOW_TRACKING_URI"),
+    tracking_uri=os.getenv("MLFLOW_TRACKING_URI"), registry_uri=os.getenv("MLFLOW_TRACKING_URI")
 )
 
 mlflow.set_tracking_uri(uri=os.getenv("MLFLOW_TRACKING_URI"))
@@ -110,10 +108,7 @@ experiment = mlflow.set_experiment(experiment_name)
 
 # %%
 def compare_metrics(
-    client: MlflowClient,
-    current_run_id: str,
-    baseline_run_id: str,
-    metrics_to_compare: Dict[str, str],
+    client: MlflowClient, current_run_id: str, baseline_run_id: str, metrics_to_compare: Dict[str, str]
 ):
     """
     Compare the performance of two runs based on given metrics.
@@ -306,9 +301,7 @@ max_search_attempts = 5
 # Create a parent run for all the attempts
 with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
     # Enable MLflow's automatic experiment tracking for scikit-learn
-    mlflow.sklearn.autolog(
-        log_models=False,  # Model is logged separately below
-    )
+    mlflow.sklearn.autolog(log_models=False)  # Model is logged separately below
 
     print(f"Starting hyperparameter search under parent run {parent_run.info.run_id}")
 
@@ -353,11 +346,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
             current_mae = mean_absolute_error(y_test, y_pred)
             current_r2 = r2_score(y_test, y_pred)
 
-            current_metrics = {
-                "test_rmse": current_rmse,
-                "test_mae": current_mae,
-                "test_r2": current_r2,
-            }
+            current_metrics = {"test_rmse": current_rmse, "test_mae": current_mae, "test_r2": current_r2}
 
             mlflow.log_metrics(current_metrics, run_id=child_run.info.run_id)
             mlflow.log_metrics(current_metrics, run_id=parent_run.info.run_id, step=attempt)
@@ -383,11 +372,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
                 mlflow_client,
                 child_run.info.run_id,
                 latest_run.info.run_id,
-                {
-                    "test_r2": "higher",
-                    "test_rmse": "lower",
-                    "test_mae": "lower",
-                },
+                {"test_r2": "higher", "test_rmse": "lower", "test_mae": "lower"},
             )
 
             # Print improvement status
@@ -429,10 +414,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
 from ipywidgets import Checkbox
 
 skip_inference = Checkbox(
-    value=os.environ["SKIP_INFERENCE"].lower() == "true",
-    description="Skip inference",
-    disabled=False,
-    indent=False,
+    value=os.environ["SKIP_INFERENCE"].lower() == "true", description="Skip inference", disabled=False, indent=False
 )
 
 skip_inference
@@ -447,9 +429,7 @@ skip_inference
 # %%skip $skip_inference.value
 
 latest_version_info = mlflow_client.get_model_version_by_alias(model_name, "dev")
-print(
-    f"Latest model version: {latest_version_info.version}. Alias: {latest_version_info.aliases}"
-)
+print(f"Latest model version: {latest_version_info.version}. Alias: {latest_version_info.aliases}")
 
 # model_uri ="models:/diabetes-model@dev"
 model_uri = f"models:/{model_name}/{latest_version_info.version}"
@@ -509,9 +489,7 @@ row = diabetes_result.sample().iloc[0].to_list()  # Select a random row from the
 
 response = requests.post(
     f"{model_server_url}/invocations",
-    json={
-        "dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": [row]}
-    },
+    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": [row]}},
 )
 
 print(json.dumps(response.json(), indent=4))
@@ -521,21 +499,11 @@ print(json.dumps(response.json(), indent=4))
 # %%skip $skip_inference.value
 
 # select first/last rows
-first_last = pd.concat(
-    [
-        diabetes_result.iloc[[0]],
-        diabetes_result.iloc[[-1]],
-    ]
-)
+first_last = pd.concat([diabetes_result.iloc[[0]], diabetes_result.iloc[[-1]]])
 
 response = requests.post(
     f"{model_server_url}/invocations",
-    json={
-        "dataframe_split": {
-            "columns": diabetes_result.columns.to_list(),
-            "data": first_last.values.tolist(),
-        }
-    },
+    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": first_last.values.tolist()}},
 )
 
 print(json.dumps(response.json(), indent=4))
@@ -545,14 +513,11 @@ print(json.dumps(response.json(), indent=4))
 # Make prediction for all rows in a dataframe
 
 # %%
+# %%skip $skip_inference.value
+
 response = requests.post(
     f"{model_server_url}/invocations",
-    json={
-        "dataframe_split": {
-            "columns": diabetes_result.columns.to_list(),
-            "data": diabetes_result.values.tolist(),
-        }
-    },
+    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": diabetes_result.values.tolist()}},
 )
 response_data = response.json()
 # print(json.dumps(response_data, indent=4))

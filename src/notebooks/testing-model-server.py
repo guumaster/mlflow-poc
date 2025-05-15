@@ -12,22 +12,81 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.17.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 #   language_info:
 #     codemirror_mode:
 #       name: ipython
-#       version: 2
+#       version: 3
 #     file_extension: .py
 #     mimetype: text/x-python
 #     name: python
 #     nbconvert_exporter: python
-#     pygments_lexer: ipython2
-#     version: 2.7.6
+#     pygments_lexer: ipython3
+#     version: 3.10.16
 # ---
 
 # %% [markdown]
+# ## Calls to Dagster
+
+# %% editable=true slideshow={"slide_type": ""} tags=[]
+# Function to wait for completion
+def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
+    start_time = time.time()
+
+    while True:
+        # Check if timeout reached
+        if time.time() - start_time > timeout:
+            raise TimeoutError(f"Job {run_id} did not complete within {timeout} seconds")
+
+        try:
+            status = client.get_run_status(run_id)
+            if status == DagsterRunStatus.SUCCESS:
+                return True, status
+            elif status in [DagsterRunStatus.FAILURE, DagsterRunStatus.CANCELED]:
+                return False, status
+            else:
+                print(f"Job status: {status}. Waiting...")
+                time.sleep(poll_interval)
+
+        except DagsterGraphQLClientError as exc:
+            print(f"Error checking job status: {exc}")
+            raise exc
+
+
+# %%
+import time
+
+from dagster import DagsterRunStatus
+from dagster_graphql import DagsterGraphQLClient
+from dagster_graphql import DagsterGraphQLClientError
+
+client = DagsterGraphQLClient("localhost", port_number=3000)
+
+# Wait for the job to complete
+try:
+    new_run_id: str = client.submit_job_execution(
+        "train_diabetes_model_job",  # Your job name
+        repository_location_name="src.dagster_job.repository",  # Location from your error
+        run_config={},
+    )
+
+    print(f"Job submitted with run_id: {new_run_id}")
+
+    success, status = wait_for_job_completion(new_run_id)
+    if success:
+        print("Job completed successfully!")
+    else:
+        print(f"Job failed with status: {status}")
+
+except Exception as e:
+    print(f"Error while waiting for job completion: {e}")
+    raise
+
+
+
+# %% [markdown] jp-MarkdownHeadingCollapsed=true
 # ## Testing calls to model server
 
 # %% [markdown]
