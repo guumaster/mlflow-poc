@@ -36,6 +36,7 @@ EXPOSE 5000
 # Run mlflow server
 CMD ["sh", "-c", "poetry run mlflow server --backend-store-uri ${BACKEND_URI} --default-artifact-root ${ARTIFACT_ROOT} --host 0.0.0.0"]
 
+
 # ============ Model Server ============
 FROM mlflow AS model-server
 
@@ -53,5 +54,5 @@ CMD [ "sh", "-c", "poetry run mlflow models serve --model-uri \"${MODEL_URI}\" -
 # ============ Model Server ============
 FROM seldonio/mlserver:1.7.0-mlflow AS mlserver
 
-
-RUN pip install boto3 mlflow==2.22.0 numpy==2.2.5 psutil==7.0.0 scipy==1.15.3
+# Adding AWS S3 dependency
+RUN pip install boto3

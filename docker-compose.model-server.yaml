@@ -1,0 +1,73 @@
+
+
+
+services:
+
+  diabetes-model-server:
+    container_name: diabetes-model-server
+    profiles:
+      - model-server
+    build:
+      context: .
+      target: model-server
+    ports:
+      - "7000:7000"
+    environment:
+      AWS_ACCESS_KEY_ID: "admin"
+      AWS_SECRET_ACCESS_KEY: "admin123"
+      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
+      BACKEND_URI: "postgresql://mlflow:mlflow_pass@postgres:5432"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"  # Critical addition
+      MODEL_URI: "models:/diabetes-model@dev"
+    depends_on:
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    networks:
+      - mlflow-network
+
+  mlserver:
+    profiles:
+      - model-server
+    #image: seldonio/mlserver:1.7.0-mlflow
+    build:
+      context: .
+      target: mlserver
+    container_name: mlserver
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+      - "8082:8082"
+    environment:
+      - MLSERVER_MODEL_REPOSITORY=/mnt/models
+      - MLSERVER_MODELS_IMPLEMENTATION=mlserver_mlflow.MLflowRuntime
+      - MLSERVER_MODELS_URI=mlflow://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5000  # Explicitly set MLflow tracking URI
+      - MLFLOW_REGISTRY_URI=http://mlflow:5000  # Explicitly set registry URI
+      # MinIO Config
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin123
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_USE_SSL=false
+
+      # Debugging
+      - MLSERVER_DEBUG=true
+      - PYTHONDEBUG=1  # Enables Python debug output
+      - LOGLEVEL=DEBUG  # Forces MLServer internal debug logs
+      - MLSERVER_METRICS_ENDPOINT=/metrics  # Expose Prometheus endpoint
+      - MLSERVER_METRICS_PORT=8082          # Port for metrics (same as inference)
+    depends_on:
+      minio:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    volumes:
+      - ./model-settings/settings.json:/mnt/models/settings.json
+      - ./model-settings/diabetes-model-settings.json:/mnt/models/diabetes-model/model-settings.json
+      #- ./model-settings/wine-model-settings.json:/mnt/models/elastic-wine/model-settings.json
+      - ./storage/models:/mnt/models
+    networks:
+      - mlflow-network

@@ -1,6 +1,60 @@
 name: mlflow-poc
 
+include:
+  - path:
+    - ./docker-compose.model-server.yaml
+
 services:
+
+  mlflow:
+    container_name: mlflow
+    build:
+      context: .
+      target: mlflow-server
+    ports:
+      - "5000:5000"
+    environment:
+      # Build env
+      BACKEND_URI: "postgresql://mlflow:mlflow_pass@postgres:5432"
+      ARTIFACT_ROOT: "s3://mlflow-artifacts/"
+      # AWS creds
+      AWS_ACCESS_KEY_ID: "admin"
+      AWS_SECRET_ACCESS_KEY: "admin123"
+      # MLflow env
+      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
+    depends_on:
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    networks:
+      - mlflow-network
+
+  dagster:
+    container_name: dagster
+    build:
+      context: .
+      dockerfile: dagster/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin123
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      mlflow:
+        condition: service_started
+    networks:
+      - mlflow-network
+    volumes:
+      - ./src/notebooks:/usr/src/app/notebooks
+
   postgres:
     container_name: postgres
     image: postgres:latest
@@ -33,95 +87,8 @@ services:
     networks:
       - mlflow-network
 
-  mlflow:
-    container_name: mlflow
-    build:
-      context: .
-      target: mlflow-server
-    ports:
-      - "5000:5000"
-    environment:
-      # Build env
-      BACKEND_URI: "postgresql://mlflow:mlflow_pass@postgres:5432"
-      ARTIFACT_ROOT: "s3://mlflow-artifacts/"
-      # AWS creds
-      AWS_ACCESS_KEY_ID: "admin"
-      AWS_SECRET_ACCESS_KEY: "admin123"
-      # MLflow env
-      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
-    depends_on:
-      postgres:
-        condition: service_started
-      minio:
-        condition: service_healthy
-    networks:
-      - mlflow-network
 
-  diabetes-model-server:
-    container_name: diabetes-model-server
-    profiles:
-      - model-server
-    build:
-      context: .
-      target: model-server
-    ports:
-      - "7000:7000"
-    environment:
-      AWS_ACCESS_KEY_ID: "admin"
-      AWS_SECRET_ACCESS_KEY: "admin123"
-      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
-      BACKEND_URI: "postgresql://mlflow:mlflow_pass@postgres:5432"
-      MLFLOW_TRACKING_URI: "http://mlflow:5000"  # Critical addition
-      MODEL_URI: "models:/diabetes-model@dev"
-    depends_on:
-      postgres:
-        condition: service_started
-      minio:
-        condition: service_healthy
-      mlflow:
-        condition: service_started
-    networks:
-      - mlflow-network
 
-  mlserver:
-    #image: seldonio/mlserver:1.7.0-mlflow
-    profiles:
-      - model-server
-    build:
-      context: .
-      target: mlserver
-    container_name: mlserver
-    ports:
-      - "8000:8000"
-      - "8080:8080"
-      - "8082:8082"
-    environment:
-      - MLSERVER_MODELS_IMPLEMENTATION=mlserver_mlflow.MLflowRuntime
-      - MLSERVER_MODELS_URI=mlflow://mlflow:5000
-      - MLFLOW_TRACKING_URI=http://mlflow:5000  # Explicitly set MLflow tracking URI
-      - MLFLOW_REGISTRY_URI=http://mlflow:5000  # Explicitly set registry URI
-      # MinIO Config
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=admin123
-      - AWS_ENDPOINT_URL=http://minio:9000
-      - AWS_S3_USE_SSL=false
-
-      # Debugging
-      - MLSERVER_DEBUG=true
-      - PYTHONDEBUG=1  # Enables Python debug output
-      - LOGLEVEL=DEBUG  # Forces MLServer internal debug logs
-      - MLSERVER_METRICS_ENDPOINT=/metrics  # Expose Prometheus endpoint
-      - MLSERVER_METRICS_PORT=8082          # Port for metrics (same as inference)
-    depends_on:
-      minio:
-        condition: service_healthy
-      mlflow:
-        condition: service_started
-    volumes:
-      - ./model-settings/diabetes-model-settings.json:/mnt/models/diabetes-model/model-settings.json
-      #- ./model-settings/wine-model-settings.json:/mnt/models/elastic-wine/model-settings.json
-    networks:
-      - mlflow-network
 
 volumes:
   postgres_data:
