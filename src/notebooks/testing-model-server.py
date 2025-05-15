@@ -38,6 +38,8 @@ from dagster_graphql import DagsterGraphQLClient
 from dagster_graphql import DagsterGraphQLClientError
 
 # Function to wait for completion
+
+
 def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
     start_time = time.time()
 
@@ -62,7 +64,6 @@ def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
 
 
 # %%
-
 client = DagsterGraphQLClient("localhost", port_number=3000)
 
 # Wait for the job to complete
@@ -85,8 +86,6 @@ except Exception as e:
     print(f"Error while waiting for job completion: {e}")
     raise
 
-
-
 # %% [markdown] jp-MarkdownHeadingCollapsed=true
 # ## Testing calls to model server
 
@@ -95,14 +94,13 @@ except Exception as e:
 
 # %%
 # Config for diabetes-model-server
-# %env MODEL_SERVER_URL=http: // localhost:7000
-# %env MODEL_NAME=mlflow-model
+# %env MODEL_SERVER_URL=http://localhost:7000
+# %env MODEL_NAME=diabetes-model
 
 
 # %% language="bash"
 #
-# docker-compose up -d diabetes-model-server
-#
+# docker-compose up -d mlflow-diabetes-model
 
 # %% [markdown]
 # ### Setup for Seldom mlserver
@@ -119,6 +117,11 @@ except Exception as e:
 
 # %% [markdown]
 # ### Calls to server
+
+# %% language="bash"
+#
+# curl -f -s  http://localhost:7000/v2/models/diabetes-model/ready && echo "Ready" || echo "Not ready"
+#
 
 # %% language="bash"
 #

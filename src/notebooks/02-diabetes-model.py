@@ -83,7 +83,7 @@ mlflow_tracking_uri = os.environ["MLFLOW_TRACKING_URI"]
 skip_inference = os.environ["SKIP_INFERENCE"].lower() == "true"
 
 # For inference
-os.environ.setdefault("MODEL_SERVER_URL", "http://localhost:8080")
+os.environ.setdefault("MODEL_SERVER_URL", "http://localhost:7000")
 model_server_url = os.environ["MODEL_SERVER_URL"]
 
 
@@ -307,7 +307,7 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
 
     print(f"Starting hyperparameter search under parent run {parent_run.info.run_id}")
     # Record the run ID using scrapbook
-    sb.glue("mlflow_run_id", parent_run.info.run_id)
+    sb.glue("mlflow_parent_run_id", parent_run.info.run_id)
 
     best_run = None
     improvement_found = False
@@ -396,6 +396,9 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
         model_version = mlflow.register_model(model_uri, model_name)
         mlflow_client.set_registered_model_alias(name=model_name, alias="dev", version=model_version.version)
         latest_run = best_run
+        # Record the run ID with the model registered using scrapbook
+        sb.glue("mlflow_model_run_id", best_run.info.run_id)
+
         print(f"Model registered as '{model_name}' version {model_version.version}")
     else:
         print(f"\n🔴 No improvement found after {max_search_attempts} attempts")
@@ -481,6 +484,12 @@ diabetes_result_with_predictions.head()
 
 # %% [markdown]
 # ##### Make predictions through model server
+
+# %%
+dataset = datasets.load_diabetes()
+
+diabetes_result = pd.DataFrame(dataset["data"], columns=dataset["feature_names"])
+
 
 # %% [markdown]
 # Make a single prediction

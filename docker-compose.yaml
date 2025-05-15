@@ -43,6 +43,9 @@ services:
       - AWS_SECRET_ACCESS_KEY=admin123
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - SKIP_INFERENCE=true
+      - PYTHON_SLIM_BASE_IMAGE=python:3.12-slim
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:3000/server_info || exit 1" ]
       interval: 30s
@@ -58,7 +61,7 @@ services:
     volumes:
       - ./src/notebooks:/usr/src/app/notebooks
       - ./src/dagster_job:/usr/src/app/src/dagster_job
-
+      - /var/run/docker.sock:/var/run/docker.sock
   postgres:
     container_name: postgres
     image: postgres:latest

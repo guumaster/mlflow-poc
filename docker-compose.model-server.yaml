@@ -1,10 +1,34 @@
-
-
-
 services:
 
-  diabetes-model-server:
-    container_name: diabetes-model-server
+  mlflow-diabetes-model:
+    container_name: mlflow-diabetes-model
+    profiles:
+      - model-server
+    image: mlflow-diabetes-model:${MODEL_VERSION:-1}  # Update with your built image
+    ports:
+      - "7000:8080"
+      - "8082:8082"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f  http://localhost:7000/v2/models/diabetes-model/ready || exit 1" ]
+      start_interval: 5s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      # Debugging
+      - MLSERVER_DEBUG=true
+      - PYTHONDEBUG=1
+      - LOGLEVEL=DEBUG
+    depends_on:
+      minio:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    networks:
+      - mlflow-network
+
+  manual-diabetes-model-server:
+    container_name: manual-diabetes-model-server
     profiles:
       - model-server
     build:
@@ -67,7 +91,6 @@ services:
     volumes:
       - ./model-settings/settings.json:/mnt/models/settings.json
       - ./model-settings/diabetes-model-settings.json:/mnt/models/diabetes-model/model-settings.json
-      #- ./model-settings/wine-model-settings.json:/mnt/models/elastic-wine/model-settings.json
       - ./storage/models:/mnt/models
     networks:
       - mlflow-network
