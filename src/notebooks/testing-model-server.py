@@ -103,17 +103,12 @@ except Exception as e:
 # ## Testing calls to model server
 
 # %% [markdown]
-# #### Setup for Seldom MLflow custom model server
+# #### Setup for Dagster built MLflow container
 
 # %%
 # Config for diabetes-model-server
 # %env MODEL_SERVER_URL=http://localhost:7000
 # %env MODEL_NAME=diabetes-model
-
-
-# %% language="bash"
-#
-# docker-compose up -d mlflow-diabetes-model
 
 # %% [markdown]
 # ### Setup for Seldom mlserver
@@ -133,7 +128,22 @@ except Exception as e:
 
 # %% language="bash"
 #
-# curl -f -s  http://localhost:7000/v2/models/diabetes-model/ready && echo "Ready" || echo "Not ready"
+# curl -f -s  "${MODEL_SERVER_URL}/v2/models/diabetes-model/ready" && echo "Ready" || echo "Not ready"
+#
+
+# %% language="bash"
+#  -H "Content-Type: application/json" \
+#   -d '{
+#         "dataframe_split": {
+#             "columns": ["age", "sex", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6"],
+#             "data": [
+#                 [0.038076, 0.050680, 0.061696, 0.021872, -0.044223, -0.034821, -0.043401, -0.002592, 0.019907, -0.017646],
+#                 [-0.001882, 0.352598, -0.170647, 0.190409, 0.273711, -0.024980, -0.091299, 0.042257, -0.049390, -0.092804]
+#             ]
+#         }
+#       }' \
+#   | jq
+#
 #
 
 # %% language="bash"
@@ -157,22 +167,6 @@ except Exception as e:
 
 # %% language="bash"
 # curl -X GET -s "${MODEL_SERVER_URL}/v2/models/${MODEL_NAME}" | jq
-#
-
-# %% language="bash"
-# curl -s -X POST ${MODEL_SERVER_URL}/invocations \
-#  -H "Content-Type: application/json" \
-#   -d '{
-#         "dataframe_split": {
-#             "columns": ["age", "sex", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6"],
-#             "data": [
-#                 [0.038076, 0.050680, 0.061696, 0.021872, -0.044223, -0.034821, -0.043401, -0.002592, 0.019907, -0.017646],
-#                 [-0.001882, 0.352598, -0.170647, 0.190409, 0.273711, -0.024980, -0.091299, 0.042257, -0.049390, -0.092804]
-#             ]
-#         }
-#       }' \
-#   | jq
-#
 #
 
 # %% [markdown]

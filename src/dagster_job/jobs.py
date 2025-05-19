@@ -6,7 +6,16 @@ import scrapbook as sb
 from mlflow import MlflowClient
 from mlflow.models import build_docker
 
-from dagster import DefaultScheduleStatus, Out, Output, job, op, repository, schedule
+from dagster import (
+    DefaultScheduleStatus,
+    MetadataValue,
+    Out,
+    Output,
+    job,
+    op,
+    repository,
+    schedule,
+)
 
 
 @op(out={"mlflow_parent_run_id": Out(str), "mlflow_model_run_id": Out(str)})
@@ -96,13 +105,13 @@ def build_model_docker_image(context, verified_mlflow_run_id: str):
         context.log.info(f"Found model version {model_version.version} for run {verified_mlflow_run_id}")
 
         # Build Docker image for this specific version
-        image_name = "mlflow-diabetes-model"
+        image_name = f"mlflow-diabetes-model:{model_version.version}"
         context.log.info(f"Building Docker image '{image_name}'...")
 
         # Programmatic Docker build
         build_docker(
             model_uri=f"models:/{model_name}/{model_version.version}",
-            name=f"{image_name}:{model_version.version}",
+            name=image_name,
             # env_manager="conda",  # or "virtualenv"
             # env_manager="virtualenv",  # or "virtualenv"
             env_manager="",
@@ -113,6 +122,16 @@ def build_model_docker_image(context, verified_mlflow_run_id: str):
         )
 
         context.log.info(f"Successfully built Docker image: {image_name}")
+
+        url = "{}/experiments/1/runs/{}".format(os.getenv("MLFLOW_TRACKING_URI"), verified_mlflow_run_id)
+        context.add_output_metadata(
+            {
+                "mlflow_run": MetadataValue.url(url),
+                "mlflow_run_id": verified_mlflow_run_id,
+                "model_version": model_version.version,
+                "image_name": image_name,
+            }
+        )
 
         return image_name
 
