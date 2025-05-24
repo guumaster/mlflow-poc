@@ -7,7 +7,6 @@ include:
 services:
 
   mlflow:
-    container_name: mlflow
     build:
       context: .
       target: mlflow-server
@@ -31,10 +30,10 @@ services:
       - mlflow-network
 
   dagster:
-    container_name: dagster
     build:
       context: .
       dockerfile: dagster/Dockerfile
+      target: dagster
     ports:
       - "3000:3000"
     environment:
@@ -63,18 +62,18 @@ services:
       - ./src/dagster_job:/usr/src/app/src/dagster_job
       - /var/run/docker.sock:/var/run/docker.sock
   postgres:
-    container_name: postgres
     image: postgres:latest
     environment:
       POSTGRES_USER: "mlflow"
       POSTGRES_PASSWORD: "mlflow_pass"
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - mlflow-network
 
   minio:
-    container_name: minio
     image: docker.io/bitnami/minio:latest
     ports:
      - "9000:9000"
@@ -93,8 +92,6 @@ services:
       start_period: 10s
     networks:
       - mlflow-network
-
-
 
 
 volumes:

@@ -47,21 +47,17 @@ sys.path.append("./extensions")
 
 # %load_ext skip_kernel_extension
 
-from typing import Dict
 import os
-import json
-
 import random
-import requests
 
 import mlflow
 import numpy as np
 import pandas as pd
-
+import scrapbook as sb
 from mlflow import MlflowClient
 from sklearn import datasets
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 # %% [markdown]
@@ -86,7 +82,6 @@ skip_inference = os.environ["SKIP_INFERENCE"].lower() == "true"
 os.environ.setdefault("MODEL_SERVER_URL", "http://localhost:7000")
 model_server_url = os.environ["MODEL_SERVER_URL"]
 
-
 # %% [markdown]
 # MLflow configuration
 
@@ -95,7 +90,8 @@ experiment_name = "Diabetes Model"
 model_name = "diabetes-model"
 
 mlflow_client = MlflowClient(
-    tracking_uri=os.getenv("MLFLOW_TRACKING_URI"), registry_uri=os.getenv("MLFLOW_TRACKING_URI")
+    tracking_uri=os.getenv("MLFLOW_TRACKING_URI"),
+    registry_uri=os.getenv("MLFLOW_TRACKING_URI"),
 )
 
 mlflow.set_tracking_uri(uri=os.getenv("MLFLOW_TRACKING_URI"))
@@ -108,7 +104,10 @@ experiment = mlflow.set_experiment(experiment_name)
 
 # %%
 def compare_metrics(
-    client: MlflowClient, current_run_id: str, baseline_run_id: str, metrics_to_compare: Dict[str, str]
+    client: MlflowClient,
+    current_run_id: str,
+    baseline_run_id: str,
+    metrics_to_compare: dict[str, str],
 ):
     """
     Compare the performance of two runs based on given metrics.
@@ -117,12 +116,15 @@ def compare_metrics(
         client (object): Client object to interact with the system.
         current_run_id (str): ID of the current run.
         baseline_run_id (str): ID of the baseline run.
-        metrics_to_compare (dict): Dictionary of metrics to compare, where each key is a metric name and its value is a string indicating whether "higher" or "lower" performance is better.
+        metrics_to_compare (dict): Dictionary of metrics to compare, where each key is a
+                                   metric name and its value is a string indicating whether
+                                   "higher" or "lower" performance is better.
 
     Returns:
-        dict: A dictionary containing boolean values for each metric in `metrics_to_compare`, indicating whether the current run performed better than the baseline run.
-    """
+        dict: A dictionary containing boolean values for each metric in `metrics_to_compare`,
+            indicating whether the current run performed better than the baseline run.
 
+    """
     # Get the metrics data from the runs
     current_run = client.get_run(current_run_id)
     baseline_run = client.get_run(baseline_run_id)
@@ -131,7 +133,7 @@ def compare_metrics(
     baseline_metrics = baseline_run.data.metrics
 
     # Initialize a dictionary to store the comparison results
-    improvement = {metric: False for metric in metrics_to_compare}
+    improvement = dict.fromkeys(metrics_to_compare, False)
 
     # Compare each metric
     for metric, direction in metrics_to_compare.items():
@@ -153,6 +155,7 @@ def generate_random_run_name():
 
     Returns:
         str: A string with the name in lowercase, containing an adjective and noun, followed by a 3-digit suffix.
+
     """
     adjectives = [
         "Transonic",
@@ -285,7 +288,6 @@ if experiment:
         latest_run = res[0]
         latest_metrics = latest_run.data.metrics
 
-
 # %% [markdown]
 # ## Model Training with MLflow
 
@@ -297,11 +299,9 @@ max_features_range = (2, 20)
 min_samples_leaf_range = (1, 100)
 
 max_search_attempts = 5
-import scrapbook as sb
 
 # Create a parent run for all the attempts
 with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
-
     # Enable MLflow's automatic experiment tracking for scikit-learn
     mlflow.sklearn.autolog(log_models=False)  # Model is logged separately below
 
@@ -421,7 +421,10 @@ with mlflow.start_run(run_name=generate_random_run_name()) as parent_run:
 from ipywidgets import Checkbox
 
 skip_inference = Checkbox(
-    value=os.environ["SKIP_INFERENCE"].lower() == "true", description="Skip inference", disabled=False, indent=False
+    value=os.environ["SKIP_INFERENCE"].lower() == "true",
+    description="Skip inference",
+    disabled=False,
+    indent=False,
 )
 
 skip_inference
@@ -497,12 +500,15 @@ dataset = datasets.load_diabetes()
 
 diabetes_result = pd.DataFrame(dataset["data"], columns=dataset["feature_names"])
 
-
 # %% [markdown]
 # Make a single prediction
 
 # %%
 # %%skip $skip_inference.value
+
+import json
+
+import requests
 
 # select random row
 row = diabetes_result.sample().iloc[0].to_list()  # Select a random row from the dataset
@@ -510,10 +516,10 @@ row = diabetes_result.sample().iloc[0].to_list()  # Select a random row from the
 response = requests.post(
     f"{model_server_url}/invocations",
     json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": [row]}},
+    timeout=5,
 )
 
 print(json.dumps(response.json(), indent=4))
-
 
 # %%
 # %%skip $skip_inference.value
@@ -527,7 +533,6 @@ response = requests.post(
 )
 
 print(json.dumps(response.json(), indent=4))
-
 
 # %% [markdown]
 # Make prediction for all rows in a dataframe

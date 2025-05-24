@@ -1,58 +1,56 @@
-FROM python:3.12-slim AS mlflow
+FROM python:3.10-slim AS builder
 
-# Install system dependencies (including build tools)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Security-conscious organizations should package/review uv themselves.
+COPY --from=ghcr.io/astral-sh/uv:python3.10-alpine /usr/local/bin/uv /usr/local/bin/uv
+RUN chmod +x /usr/local/bin/uv
 
-# Install poetry
-RUN pip install poetry
-
-# Set working directory
 WORKDIR /usr/src/app
 
-# Copy pyproject.toml
-COPY pyproject.toml poetry.lock ./
+# Copy project files
+COPY pyproject.toml uv.lock ./
 
-# Install dependencies using Poetry
-RUN poetry install --no-interaction --no-root
+# Install dependencies using the venv's Python explicitly
+RUN uv venv .venv \
+    && uv sync \
+        --locked \
+        --no-dev \
+        --no-install-project
+
 
 
 # ============ MLFlow Server ============
-FROM mlflow AS  mlflow-server
+FROM python:3.10-slim  AS mlflow-server
+
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/src/app/.venv /usr/src/app/.venv
 
 # Set environment variables
 ENV BACKEND_URI=/path/to/backend
 ENV ARTIFACT_ROOT=/path/to/artifact
 
 # Activate the virtual environment
-ENV PATH="$PATH:/usr/src/app/.venv/bin"
-
-COPY src src
+ENV PATH="/usr/src/app/.venv/bin:$PATH"
 
 EXPOSE 5000
 
 # Run mlflow server
-CMD ["sh", "-c", "poetry run mlflow server --backend-store-uri ${BACKEND_URI} --default-artifact-root ${ARTIFACT_ROOT} --host 0.0.0.0"]
+CMD ["sh", "-c", "mlflow server --backend-store-uri ${BACKEND_URI} --default-artifact-root ${ARTIFACT_ROOT} --host 0.0.0.0"]
 
 
 # ============ Model Server ============
-FROM mlflow AS model-server
+FROM builder AS model-server
 
-ENV MODEL_URI=/path/to/model
-# Activate the virtual environment
-ENV PATH="$PATH:/usr/src/app/.venv/bin"
+WORKDIR /usr/src/app
 
-EXPOSE 8000
+ENV MODEL_URI=/path/to/your/model
+ENV ARTIFACT_ROOT=/path/to/artifact
+
+#COPY --from=builder /usr/src/app /usr/src/app
+
+ENV PATH="/usr/src/app/.venv/bin:$PATH"
+
+EXPOSE 7000
 
 # Start the MLFlow model server
-CMD [ "sh", "-c", "poetry run mlflow models serve --model-uri \"${MODEL_URI}\" --host 0.0.0.0  --port 7000 --workers 4  --no-conda --enable-mlserver" ]
-
-
-
-# ============ Model Server ============
-FROM seldonio/mlserver:1.7.0-mlflow AS mlserver
-
-# Adding AWS S3 dependency
-RUN pip install boto3
+CMD [ "sh", "-c", "mlflow models serve --model-uri \"${MODEL_URI}\" --host 0.0.0.0  --port 7000 --workers 4  --no-conda --enable-mlserver" ]

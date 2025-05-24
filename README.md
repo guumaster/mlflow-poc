@@ -20,12 +20,12 @@ A local implementation of MLFlow with PostgreSQL backend and MinIO (S3-compatibl
 
 ## Quick Start
 
-1. **Start the services**:
+- **Start the services**:
 ```bash
   docker-compose up -d
 ```
 
-2. **Access to  services**:
+- **Access to  services**:
 
 MLFlow UI: http://localhost:5000
 MinIO Console: http://localhost:9001 (Login with admin/admin123)

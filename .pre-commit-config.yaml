@@ -5,33 +5,45 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-executables-have-shebangs
+      - id: trailing-whitespace
+      #- id: pretty-format-json
+      #  args: [--autofix]
+      - id: sort-simple-yaml
+      - id: mixed-line-ending
+      - id: end-of-file-fixer
+      - id: detect-private-key
+      - id: debug-statements
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-xml
+      - id: check-symlinks
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-docstring-first
+      - id: check-case-conflict
+      - id: check-byte-order-marker
+      - id: check-builtin-literals
+      - id: check-ast
 
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.11
     hooks:
-      - id: black
-        exclude: src/notebooks/.*\.py
-        args: ["--line-length=120"]
-
-  - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
-    hooks:
-      - id: isort
-        exclude: src/notebooks/.*\.py
-
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.2.0
-    hooks:
-      - id: flake8
-        exclude: src/notebooks/.*\.py
-        args: ["--max-line-length=120"]
+      - id: ruff-check
+        args: [ --fix ]
+      - id: ruff-format
 
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
     hooks:
-      - id: nbqa-black
-        additional_dependencies: [black]
+      - id: nbqa-ruff-check
+        files: \.ipynb$  # Only process .ipynb files
+        additional_dependencies: [ruff, jupytext]
+        args: ["--line-length=120", "--ignore=I001"]
+
+      - id: nbqa-ruff-format
+        files: \.ipynb$  # Only process .ipynb files
+        additional_dependencies: [ruff, jupytext]
         args: ["--line-length=120"]
 
   # Jupytext: Sync .ipynb with paired .py files and clean metadata

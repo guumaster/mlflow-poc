@@ -1,16 +1,23 @@
+"""Example dagster job for training a diabetes model with MLFlow and Papermill."""
+
 import os
 from pathlib import Path
+from typing import cast
 
 import papermill as pm
 import scrapbook as sb
 from mlflow import MlflowClient
 from mlflow.models import build_docker
+from scrapbook.models import Notebook
 
 from dagster import (
     DefaultScheduleStatus,
+    JobDefinition,
     MetadataValue,
+    OpExecutionContext,
     Out,
     Output,
+    ScheduleDefinition,
     job,
     op,
     repository,
@@ -19,7 +26,7 @@ from dagster import (
 
 
 @op(out={"mlflow_parent_run_id": Out(str), "mlflow_model_run_id": Out(str)})
-def train_diabetes_model(context):
+def train_diabetes_model(context: OpExecutionContext):
     # Define notebook paths
     input_notebook = "/usr/src/app/notebooks/02-diabetes-model.ipynb"
     output_dir = "/tmp"  # "/usr/src/app/notebooks/outputs"
@@ -46,12 +53,13 @@ def train_diabetes_model(context):
             strip_output=True,  # This removes output cells entirely
         )
 
-        scrapbook_data = sb.read_notebook(output_notebook)
-        mlflow_parent_run_id = scrapbook_data.scraps.get("mlflow_parent_run_id").data
-        mlflow_model_run_id = scrapbook_data.scraps.get("mlflow_model_run_id").data
+        scrapbook_data: Notebook = cast(Notebook, sb.read_notebook(output_notebook))
+        mlflow_parent_run_id = scrapbook_data.scraps.get("mlflow_parent_run_id", {}).data
+        mlflow_model_run_id = scrapbook_data.scraps.get("mlflow_model_run_id", {}).data
 
         if not mlflow_parent_run_id or not mlflow_model_run_id:
-            raise ValueError("MLflow run IDs not found in notebook execution")
+            msg = "MLflow run IDs not found in notebook execution"
+            raise ValueError(msg)
 
         context.log.info(
             f"Notebook executed successfully. "
@@ -63,7 +71,7 @@ def train_diabetes_model(context):
         yield Output(mlflow_model_run_id, "mlflow_model_run_id")
 
     except pm.PapermillExecutionError as e:
-        context.log.error(f"Notebook execution failed: {str(e)}")
+        context.log.exception(f"Notebook execution failed: {e!s}")
         raise
 
 
@@ -74,22 +82,21 @@ def check_mlflow_status(context, mlflow_model_run_id: str):
         run = client.get_run(mlflow_model_run_id)
 
         if run.info.status == "FAILED":
-            raise ValueError(f"MLflow run {mlflow_model_run_id} failed with status: {run.info.status}")
+            msg = f"MLflow run {mlflow_model_run_id} failed with status: {run.info.status}"
+            raise ValueError(msg)
 
         context.log.info(f"MLflow run {mlflow_model_run_id} completed successfully with status: {run.info.status}")
 
         yield Output(mlflow_model_run_id, "verified_mlflow_run_id")
 
     except Exception as e:
-        context.log.error(f"Error checking MLflow status: {str(e)}")
+        context.log.exception(f"Error checking MLflow status: {e!s}")
         raise
 
 
 @op
-def build_model_docker_image(context, verified_mlflow_run_id: str):
-    """
-    Builds Docker image for the newly registered MLflow model
-    """
+def build_model_docker_image(context: OpExecutionContext, verified_mlflow_run_id: str):
+    """Builds Docker image for the newly registered MLflow model."""
     try:
         mlflow_client = MlflowClient()
 
@@ -98,7 +105,8 @@ def build_model_docker_image(context, verified_mlflow_run_id: str):
         model_versions = mlflow_client.search_model_versions(f"run_id='{verified_mlflow_run_id}'")
 
         if not model_versions:
-            raise ValueError(f"No model versions found for run {verified_mlflow_run_id}")
+            msg = f"No model versions found for run {verified_mlflow_run_id}"
+            raise ValueError(msg)
 
         model_version = model_versions[0]
 
@@ -136,12 +144,13 @@ def build_model_docker_image(context, verified_mlflow_run_id: str):
         return image_name
 
     except Exception as e:
-        context.log.error(f"Failed to build Docker image: {str(e)}")
+        context.log.exception(f"Failed to build Docker image: {e!s}")
         raise
 
 
 @job
-def train_diabetes_model_job():
+def train_diabetes_model_job() -> None:
+    """Train a diabetes model and log it to MLFlow."""
     _, mlflow_model_run_id = train_diabetes_model()
     verified_mlflow_model_run_id = check_mlflow_status(mlflow_model_run_id)  # This must complete first
     build_model_docker_image(verified_mlflow_model_run_id)
@@ -153,10 +162,11 @@ def train_diabetes_model_job():
     execution_timezone="UTC",
     default_status=DefaultScheduleStatus.RUNNING,
 )  # Daily at midnight UTC
-def daily_training_schedule(_context):
-    return {}
+def daily_training_schedule() -> None:
+    """Daily training schedule."""
 
 
 @repository()
-def mlflow_repo():
+def mlflow_repo() -> list[JobDefinition | ScheduleDefinition]:
+    """All components of the MLflow POC dagster."""
     return [train_diabetes_model_job, daily_training_schedule]

@@ -24,7 +24,7 @@
 #     name: python
 #     nbconvert_exporter: python
 #     pygments_lexer: ipython3
-#     version: 3.10.16
+#     version: 3.12.9
 # ---
 
 # %% [markdown]
@@ -33,14 +33,12 @@
 # %%
 import time
 
+from dagster_graphql import DagsterGraphQLClient, DagsterGraphQLClientError
+
 from dagster import DagsterRunStatus
-from dagster_graphql import DagsterGraphQLClient
-from dagster_graphql import DagsterGraphQLClientError
 
 
 # Function to wait for completion
-
-
 def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
     start_time = time.time()
 
@@ -53,32 +51,37 @@ def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
             status = client.get_run_status(run_id)
             if status == DagsterRunStatus.SUCCESS:
                 return True, status
-            elif status in [DagsterRunStatus.FAILURE, DagsterRunStatus.CANCELED]:
+            if status in [DagsterRunStatus.FAILURE, DagsterRunStatus.CANCELED]:
                 return False, status
-            else:
-                print(f"Job status: {status}. Waiting...")
-                time.sleep(poll_interval)
+            print(f"Job status: {status}. Waiting...")
+            time.sleep(poll_interval)
 
         except DagsterGraphQLClientError as exc:
             print(f"Error checking job status: {exc}")
-            raise exc
+            raise
 
 
-def wait_until_model_ready(model_server_url, max_retries=10, timeout=15):
-    """Wait until the model is ready"""
+def wait_until_model_ready(model_server_url, model_name, max_retries=10, timeout=5, initial_delay=5) -> None:
+    """Wait until the model is ready."""
+
+    # Initial delay to allow model server to start
+    print(f"Waiting for {initial_delay} seconds for model server to start...")
+    time.sleep(initial_delay)
+
     retry_count = 0
     while retry_count < max_retries:
-        response = requests.get(f"{model_server_url}/v2/models/diabetes-model/ready")
-        if response.status_code == 200:
+        try:
+            response = requests.get(f"{model_server_url}/v2/models/{model_name}/ready")
+            response.raise_for_status()  # Raise an exception for bad status codes
             print("Ready")
             break
-        else:
-            print("Not ready, retrying in {} seconds".format(timeout))
-            time.sleep(timeout)
-            retry_count += 1
-    else:
-        print("Model is not ready after {} retries".format(max_retries))
-
+        except requests.exceptions.RequestException as e:
+            if retry_count == max_retries - 1:
+                print(f"Model is not ready after {max_retries} retries: {e}")
+            else:
+                print(f"Not ready, retrying in {timeout} seconds: {e}")
+        time.sleep(timeout)
+        retry_count += 1
 
 
 # %%
@@ -120,11 +123,15 @@ except Exception as e:
 # ## Testing python calls
 
 # %%
-from sklearn import datasets
 import pandas as pd
 import requests
+from sklearn import datasets
+
+model_server_url = "http://localhost:7001"
+model_name = "mlflow-model"
 
 model_server_url = "http://localhost:7000"
+model_name = "diabetes-model"
 
 # %%
 dataset = datasets.load_diabetes()
@@ -135,12 +142,15 @@ diabetes_result = pd.DataFrame(dataset["data"], columns=dataset["feature_names"]
 # Make prediction for all rows in a dataframe
 
 # %%
-wait_until_model_ready(model_server_url)
+wait_until_model_ready(model_server_url, model_name)
 
 # %%
 response = requests.post(
     f"{model_server_url}/invocations",
-    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": diabetes_result.values.tolist()}},
+    json={
+        "dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": diabetes_result.to_numpy().tolist()},
+    },
+    timeout=5,
 )
 response_data = response.json()
 # print(json.dumps(response_data, indent=4))

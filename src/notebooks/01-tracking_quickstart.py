@@ -60,7 +60,8 @@ from sklearn.model_selection import train_test_split
 # Please see [the guide to running notebooks here](https://www.mlflow.org/docs/latest/getting-started/running-notebooks/) for more information on setting the tracking server uri and configuring access to either managed or self-managed MLflow tracking servers.
 
 # %%
-# NOTE: review the links mentioned above for guidance on connecting to a managed tracking server, such as the Databricks Managed MLflow
+# NOTE: review the links mentioned above for guidance on connecting to a managed tracking server,
+# such as the Databricks Managed MLflow
 
 mlflow.set_tracking_uri(uri="http://localhost:5000")
 
