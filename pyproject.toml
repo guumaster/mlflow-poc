@@ -3,7 +3,7 @@ name = "mlflow-poc"
 version = "0.1.0"
 description = "POC for local MLFlow"
 authors = [{ name = "Your Name", email = "you@example.com" }]
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.11"
 
 dependencies = [
     "boto3==1.38.23",

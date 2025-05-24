@@ -1,7 +1,7 @@
-FROM python:3.12-slim AS builder
+FROM python:3.10-slim AS builder
 
 # Security-conscious organizations should package/review uv themselves.
-COPY --from=ghcr.io/astral-sh/uv:python3.12-alpine /usr/local/bin/uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:python3.10-alpine /usr/local/bin/uv /usr/local/bin/uv
 RUN chmod +x /usr/local/bin/uv
 
 WORKDIR /usr/src/app
@@ -17,7 +17,7 @@ RUN uv venv .venv \
         --no-install-project
 
 
-FROM python:3.12-slim AS dagster
+FROM python:3.10-slim AS dagster
 
 # Install system dependencies
 RUN apt-get update \
@@ -42,4 +42,4 @@ COPY dagster/dagster.yaml /usr/src/app/dagster.yaml
 # Expose ports
 EXPOSE 3000
 
-CMD ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "src.dagster_job.jobs"]
+CMD ["sh", "-c", "dagster dev -h 0.0.0.0 -p 3000 -m src.dagster_job.jobs"]

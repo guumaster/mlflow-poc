@@ -1,9 +1,0 @@
-{
-  "implementation": "mlserver_mlflow.MLflowRuntime",
-  "name": "diabetes-model",
-  "parameters": {
-    "artifact_location": "s3://mlflow-artifacts/",
-    "registry_uri": "http://mlflow:5000",
-    "uri": "models:/diabetes-model/latest"
-  }
-}

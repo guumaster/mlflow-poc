@@ -127,9 +127,11 @@ import pandas as pd
 import requests
 from sklearn import datasets
 
+# Manual "manual-diabetes-model" build with "dev" model.
 model_server_url = "http://localhost:7001"
 model_name = "mlflow-model"
 
+# Build by MLflow "mlflow-diabetes-model"
 model_server_url = "http://localhost:7000"
 model_name = "diabetes-model"
 

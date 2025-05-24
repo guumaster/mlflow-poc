@@ -126,7 +126,7 @@ def build_model_docker_image(context: OpExecutionContext, verified_mlflow_run_id
             install_mlflow=True,
             enable_mlserver=True,
             install_java=False,
-            base_image="python:3.12-slim",
+            base_image="python:3.10-slim",
         )
 
         context.log.info(f"Successfully built Docker image: {image_name}")
