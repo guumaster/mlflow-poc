@@ -132,6 +132,7 @@ except Exception as e:
 #
 
 # %% language="bash"
+# curl -s -X POST ${MODEL_SERVER_URL}/invocations \
 #  -H "Content-Type: application/json" \
 #   -d '{
 #         "dataframe_split": {
