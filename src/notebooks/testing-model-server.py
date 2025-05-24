@@ -64,6 +64,23 @@ def wait_for_job_completion(run_id, timeout=3600, poll_interval=5):
             raise exc
 
 
+def wait_until_model_ready(model_server_url, max_retries=10, timeout=15):
+    """Wait until the model is ready"""
+    retry_count = 0
+    while retry_count < max_retries:
+        response = requests.get(f"{model_server_url}/v2/models/diabetes-model/ready")
+        if response.status_code == 200:
+            print("Ready")
+            break
+        else:
+            print("Not ready, retrying in {} seconds".format(timeout))
+            time.sleep(timeout)
+            retry_count += 1
+    else:
+        print("Model is not ready after {} retries".format(max_retries))
+
+
+
 # %%
 client = DagsterGraphQLClient("localhost", port_number=3000)
 
@@ -118,7 +135,9 @@ diabetes_result = pd.DataFrame(dataset["data"], columns=dataset["feature_names"]
 # Make prediction for all rows in a dataframe
 
 # %%
+wait_until_model_ready(model_server_url)
 
+# %%
 response = requests.post(
     f"{model_server_url}/invocations",
     json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": diabetes_result.values.tolist()}},
