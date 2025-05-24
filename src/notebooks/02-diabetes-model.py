@@ -479,7 +479,14 @@ diabetes_result_with_predictions.head()
 # %% language="bash"
 # [ "$SKIP_INFERENCE" = true ] && echo "SKIP: $SKIP_INFERENCE" && exit 0
 #
-# docker-compose up -d mlserver
+# export MODEL_VERSION=$(curl -s -X GET "http://localhost:5000/api/2.0/mlflow/registered-models/alias?name=diabetes-model&alias=dev" \
+#     | jq -r '.model_version.version')
+#
+# echo "Model version: $MODEL_VERSION"
+#
+# echo "Restarting docker with latest version"
+#
+# docker-compose --profile model-server up -d  --force-recreate mlflow-diabetes-model
 #
 
 # %% [markdown]

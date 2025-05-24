@@ -99,8 +99,40 @@ except Exception as e:
 # docker-compose --profile model-server up -d  --force-recreate mlflow-diabetes-model
 #
 
+# %% [markdown]
+# ## Testing python calls
+
+# %%
+from sklearn import datasets
+import pandas as pd
+import requests
+
+model_server_url = "http://localhost:7000"
+
+# %%
+dataset = datasets.load_diabetes()
+
+diabetes_result = pd.DataFrame(dataset["data"], columns=dataset["feature_names"])
+
+# %% [markdown]
+# Make prediction for all rows in a dataframe
+
+# %%
+
+response = requests.post(
+    f"{model_server_url}/invocations",
+    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": diabetes_result.values.tolist()}},
+)
+response_data = response.json()
+# print(json.dumps(response_data, indent=4))
+
+diabetes_result_with_predictions = diabetes_result.copy()
+diabetes_result_with_predictions["predictions_response"] = response_data["predictions"]
+
+diabetes_result_with_predictions
+
 # %% [markdown] jp-MarkdownHeadingCollapsed=true
-# ## Testing calls to model server
+# ## Testing API calls to model server
 
 # %% [markdown]
 # #### Setup for Dagster built MLflow container
