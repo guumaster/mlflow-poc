@@ -529,7 +529,7 @@ first_last = pd.concat([diabetes_result.iloc[[0]], diabetes_result.iloc[[-1]]])
 
 response = requests.post(
     f"{model_server_url}/invocations",
-    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": first_last.values.tolist()}},
+    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": first_last.to_numpy().tolist()}},
 )
 
 print(json.dumps(response.json(), indent=4))
@@ -542,7 +542,9 @@ print(json.dumps(response.json(), indent=4))
 
 response = requests.post(
     f"{model_server_url}/invocations",
-    json={"dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": diabetes_result.values.tolist()}},
+    json={
+        "dataframe_split": {"columns": diabetes_result.columns.to_list(), "data": diabetes_result.to_numpy().tolist()}
+    },
 )
 response_data = response.json()
 # print(json.dumps(response_data, indent=4))

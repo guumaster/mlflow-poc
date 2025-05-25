@@ -53,7 +53,7 @@ def train_diabetes_model(context: OpExecutionContext):
             strip_output=True,  # This removes output cells entirely
         )
 
-        scrapbook_data: Notebook = cast(Notebook, sb.read_notebook(output_notebook))
+        scrapbook_data: Notebook = cast("Notebook", sb.read_notebook(output_notebook))
         mlflow_parent_run_id = scrapbook_data.scraps.get("mlflow_parent_run_id", {}).data
         mlflow_model_run_id = scrapbook_data.scraps.get("mlflow_model_run_id", {}).data
 

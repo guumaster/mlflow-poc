@@ -51,11 +51,11 @@ line-length = 120
 
 [tool.ruff.lint]
 # Enable all available rules
-select = ["B", "E", "F", "G", "I", "I", "N", "PL", "RUF", "UP", "W", ]
+#select = ["B", "E", "F", "G", "I", "I", "N", "PL", "RUF", "UP", "W", ]
+select = ["ALL", ]
 extend-ignore = [
     # Disable entire categories
-    "D",   # All pydocstyle rules
-    "G",   # All naming conventions
+    "ANN", "D", "ERA", "INP", "G", "S", "T", "TC", "TRY",
 ]
 ignore = [
     "D203",  # Incompatible with D211 (blank lines around classes)
